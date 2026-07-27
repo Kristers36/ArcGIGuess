@@ -64,12 +64,17 @@ Everything configurable lives in **[`config.js`](./config.js)** as
 
 | Setting | What it is |
 | --- | --- |
+| `portalUrl` | The portal hosting your web map. `null` uses ArcGIS Online; set it to your **ArcGIS Enterprise** portal URL (e.g. `https://gis.example.com/portal`) to use Enterprise. |
 | `webMapItemId` | The item ID of your ArcGIS **web map** (the basemap players see). |
 | `landmarkLayerTitle` | The **title of the layer** inside that web map holding your landmarks. It's hidden during play. |
 | `landmarkIdField` | The unique ID field on that layer (used to fetch each landmark's photo attachment). |
 | `roundsPerGame` | How many landmarks to play per game (`null` = all of them). |
 | `shuffleLandmarks` | `true` randomizes the order each game. `false` plays them in the layer's natural order. |
 | `allowFinishEarly` | `true` shows a "Finish early" button so players can accept their score and jump to the results (remaining landmarks count as missed). |
+
+> **ArcGIS Enterprise:** by default ArcGIGuess talks to ArcGIS Online. To point it
+> at an Enterprise portal instead, set `portalUrl` to your portal's URL — the web
+> map, its layers, and any sign-in prompts will all target that portal.
 
 > **Guided tour mode:** set `shuffleLandmarks: false` to walk players through your
 > landmarks in a fixed, deliberate sequence — great for a curated tour, an

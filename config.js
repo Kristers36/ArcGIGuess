@@ -41,6 +41,12 @@ window.ARCGIGUESS_CONFIG = {
      * 2. THE MAP & LANDMARK DATA
      * ---------------------------------------------------------------------- */
 
+    // The portal that hosts your web map. Leave null to use ArcGIS Online.
+    // To use ArcGIS Enterprise, set this to your portal's URL, e.g.
+    // "https://gis.example.com/portal". The web map, its layers, and any
+    // sign-in prompts will all target this portal.
+    portalUrl: null,
+
     // The ArcGIS web map that provides the basemap the player sees.
     // This is the item ID of a web map in ArcGIS Online / Enterprise.
     // If the web map is private, ArcGIS will automatically prompt the player

@@ -21,13 +21,14 @@
  * ========================================================================== */
 $arcgis
     .import([
+        "@arcgis/core/config.js",
         "@arcgis/core/WebMap.js",
         "@arcgis/core/Graphic.js",
         "@arcgis/core/request.js",
         "@arcgis/core/geometry/operators/containsOperator.js",
         "@arcgis/core/geometry/operators/distanceOperator.js",
     ])
-    .then(([WebMap, Graphic, esriRequest, containsOperator, distanceOperator]) => {
+    .then(([esriConfig, WebMap, Graphic, esriRequest, containsOperator, distanceOperator]) => {
         // -------------------------------------------------------------------
         // All settings live in config.js (exposed as window.ARCGIGUESS_CONFIG).
         // Edit THAT file — not this one — to make the game your own.
@@ -347,6 +348,14 @@ $arcgis
          */
         async function init() {
             try {
+                // Point the SDK at an ArcGIS Enterprise portal if one is
+                // configured; otherwise it defaults to ArcGIS Online. This
+                // must be set before the web map loads so item requests and
+                // any sign-in prompts target the right portal.
+                if (CONFIG.portalUrl) {
+                    esriConfig.portalUrl = CONFIG.portalUrl;
+                }
+
                 // Create the web map and hand it to the <arcgis-map> component.
                 webmap = new WebMap({
                     portalItem: {
