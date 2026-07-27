@@ -1,0 +1,126 @@
+/* Use Inter font */
+html {
+    font-family: "Inter", sans-serif;
+}
+
+/* Ensure map and UI cover the screen */
+html,
+body,
+#app-container {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#gameMap {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    display: block;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    pointer-events: none; /* Allow map clicks by default */
+    display: flex;
+    align-items: flex-end; /* Aligns panels to the bottom */
+    justify-content: center;
+}
+
+/* Panels will block pointers when visible */
+.panel {
+    pointer-events: auto;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    /* Never let a panel grow taller than the viewport (e.g. the results panel
+       on a short/landscape phone) — scroll inside it instead of getting cut off. */
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+
+/* "Finish early" button, armed (awaiting a confirming second tap) */
+#finish-early-button.armed {
+    color: #dc2626; /* red-600 */
+    font-weight: 700;
+}
+
+/* Simple show/hide */
+.hidden {
+    display: none !important;
+}
+
+/* RTL support */
+[dir="rtl"] {
+    text-align: right;
+}
+
+/* Custom button styles */
+/* Note: These @apply rules are for Tailwind.
+    If not using a Tailwind build process, 
+    replace with standard CSS or use Tailwind classes directly.
+    For this setup, we'll assume the CDN handles it.
+*/
+.btn {
+    padding: 0.75rem 1.5rem; /* px-6 py-3 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-weight: 600; /* font-semibold */
+    color: white; /* text-white */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+    transition: transform 0.15s; /* transition-transform duration-150 */
+}
+.btn:active {
+    transform: scale(0.95); /* active:scale-95 */
+}
+
+.btn-primary {
+    background-color: #2563eb; /* bg-blue-600 */
+}
+.btn-primary:hover {
+    background-color: #1d4ed8; /* hover:bg-blue-700 */
+}
+
+.btn-secondary {
+    background-color: #6b7280; /* bg-gray-500 */
+}
+.btn-secondary:hover {
+    background-color: #4b5563; /* hover:bg-gray-600 */
+}
+
+.btn-confirm {
+    background-color: #16a34a; /* bg-green-600 */
+}
+.btn-confirm:hover {
+    background-color: #15803d; /* hover:bg-green-700 */
+}
+
+/* Landmark image (shown in the game panel) */
+#landmark-image-container {
+    /* Set a 16:9 aspect ratio */
+    aspect-ratio: 16 / 9;
+}
+
+#landmark-image {
+    /* Ensure the image covers the container */
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Mobile layout adjustments (screens 640px or less, Tailwind 'sm' breakpoint) */
+@media (max-width: 640px) {
+    /* Stack the game-over action buttons into a single column */
+    #game-over-panel .grid {
+        grid-template-columns: 1fr !important; /* Force 1 column */
+    }
+}

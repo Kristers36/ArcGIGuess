@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36">
+    <!--
+        ArcGIGuess guess marker (thumbtack / drawing pin).
+        Swap this artwork for anything you like. Two rules keep it aligned:
+          1. Keep the pointed TIP at the bottom-centre of the viewBox.
+          2. If you change the width:height ratio, update `PIN_WIDTH/PIN_HEIGHT`
+             in script.js to match (this file is 24:36 → 2:3).
+    -->
+    <!-- metal needle -->
+    <path d="M12 36 L10.4 20 L13.6 20 Z" fill="#8a8f98" />
+    <!-- stem -->
+    <rect x="9.5" y="9" width="5" height="11.5" rx="1" fill="#dc2626" />
+    <!-- flat pressable head -->
+    <rect
+        x="3.5"
+        y="3"
+        width="17"
+        height="6.5"
+        rx="3.25"
+        fill="#dc2626"
+        stroke="#ffffff"
+        stroke-width="1.2"
+    />
+    <!-- gloss highlight -->
+    <rect
+        x="6"
+        y="4.6"
+        width="6"
+        height="1.8"
+        rx="0.9"
+        fill="#ffffff"
+        fill-opacity="0.55"
+    />
+</svg>

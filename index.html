@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ArcGIGuess</title>
+
+        <meta
+            name="description"
+            content="A quick geo-guessing game: we show you a landmark, you pin it on the map."
+        />
+        <meta name="theme-color" content="#2563eb" />
+
+        <link rel="icon" href="./assets/logo.svg" type="image/svg+xml" />
+
+        <!-- Social link previews (Open Graph + Twitter Card).
+             Crawlers (WhatsApp / LinkedIn / Facebook / X / Slack) do NOT run
+             JavaScript, so THESE static values are what they read. Keep them in
+             sync with the `social` block in config.js. See the README. -->
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="ArcGIGuess" />
+        <meta
+            property="og:title"
+            content="ArcGIGuess — Can you find the landmark?"
+        />
+        <meta
+            property="og:description"
+            content="A quick geo-guessing game: we show you a landmark, you pin it on the map. How well do you know the area?"
+        />
+        <meta property="og:image" content="https://aelhussiny.github.io/arcgiguess/assets/screenshot.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:url" content="https://aelhussiny.github.io/arcgiguess" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="ArcGIGuess — Can you find the landmark?"
+        />
+        <meta
+            name="twitter:description"
+            content="A quick geo-guessing game: we show you a landmark, you pin it on the map. How well do you know the area?"
+        />
+        <meta name="twitter:image" content="https://aelhussiny.github.io/arcgiguess/assets/screenshot.png" />
+        <meta name="twitter:site" content="" />
+        <meta name="twitter:creator" content="" />
+
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+        <link rel="stylesheet" href="style.css" />
+
+        <!-- ArcGIS Maps SDK for JavaScript 5.1 (CDN). This single module entry
+             point loads the core API, all web components, and the default CSS. -->
+        <script type="module" src="https://js.arcgis.com/5.1/"></script>
+    </head>
+
+    <body class="bg-gray-100">
+        <div id="app-container" class="relative">
+            <!-- 2D map web component. Its web map is set from config.js in script.js. -->
+            <arcgis-map id="gameMap">
+                <arcgis-zoom slot="top-left"></arcgis-zoom>
+            </arcgis-map>
+
+            <button
+                id="lang-toggle"
+                aria-label="Switch language"
+                class="absolute top-4 right-4 z-20 bg-white shadow-lg rounded-full p-3 text-sm font-medium hover:bg-gray-100 transition"
+            >
+                العربية
+            </button>
+
+            <div id="ui-overlay" class="p-4">
+                <div
+                    id="start-panel"
+                    class="panel bg-white/80 p-8 rounded-xl shadow-xl max-w-lg w-full text-center flex flex-col items-center"
+                >
+                    <img
+                        id="start-logo"
+                        src="./assets/logo.svg"
+                        alt="App Logo"
+                        class="w-24 h-auto mb-4"
+                    />
+                    <h1
+                        id="welcome-title"
+                        class="text-3xl font-bold text-gray-800 mb-4"
+                    >
+                        Welcome to ArcGIGuess!
+                    </h1>
+                    <p id="welcome-desc" class="text-gray-600 mb-8">
+                        Test your knowledge! We'll show you the name of a
+                        landmark, and you have to click on the map where you
+                        think it is.
+                    </p>
+                    <button
+                        id="start-button"
+                        class="btn btn-primary w-full text-lg"
+                    >
+                        Start Game
+                    </button>
+                </div>
+
+                <div
+                    id="loading-panel"
+                    class="panel hidden bg-white/80 p-8 rounded-xl shadow-xl text-center"
+                >
+                    <h2
+                        id="loading-text"
+                        class="text-2xl font-semibold text-gray-700"
+                    >
+                        Loading Landmarks...
+                    </h2>
+                    <div
+                        class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto mt-6"
+                    ></div>
+                </div>
+
+                <div
+                    id="game-panel"
+                    class="panel hidden bg-white/80 rounded-xl shadow-xl max-w-md w-full"
+                >
+                    <div
+                        id="landmark-image-container"
+                        class="w-full bg-gray-200 rounded-t-xl flex items-center justify-center"
+                    >
+                        <div
+                            id="image-spinner"
+                            class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 m-16"
+                        ></div>
+                        <img
+                            id="landmark-image"
+                            src=""
+                            alt="Landmark"
+                            class="hidden w-full h-full object-cover rounded-t-xl"
+                        />
+                    </div>
+
+                    <div class="p-4">
+                        <p
+                            id="find-landmark-text"
+                            class="text-center text-gray-600"
+                        >
+                            Find this landmark:
+                        </p>
+                        <h2
+                            id="landmark-name"
+                            class="text-center text-2xl font-bold text-blue-700"
+                        ></h2>
+                        <div class="mt-4 flex justify-between items-center">
+                            <span
+                                id="score-display"
+                                class="text-lg font-semibold text-gray-800"
+                                >Score: 0</span
+                            >
+                            <span
+                                id="round-display"
+                                class="text-sm font-medium text-gray-500"
+                                >Round 1 / 10</span
+                            >
+                        </div>
+                        <button
+                            id="confirm-button"
+                            class="btn btn-confirm w-full text-lg mt-4 hidden"
+                        >
+                            Confirm Guess
+                        </button>
+                        <button
+                            id="finish-early-button"
+                            class="hidden mt-3 w-full text-sm font-medium text-gray-500 hover:text-red-600 transition"
+                        >
+                            Finish early
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    id="round-result-panel"
+                    class="panel hidden bg-white/80 p-8 rounded-xl shadow-xl max-w-lg w-full text-center"
+                >
+                    <h2
+                        id="round-result-title"
+                        class="text-4xl font-bold mb-4"
+                    ></h2>
+                    <p
+                        id="round-result-message"
+                        class="text-lg text-gray-700 mb-6"
+                    ></p>
+                    <button
+                        id="next-button"
+                        class="btn btn-primary w-full text-lg"
+                    >
+                        Next Landmark
+                    </button>
+                </div>
+
+                <div
+                    id="game-over-panel"
+                    class="panel hidden bg-white/80 p-8 rounded-xl shadow-xl max-w-lg w-full text-center"
+                >
+                    <h1
+                        id="game-over-title"
+                        class="text-3xl font-bold text-gray-800 mb-4"
+                    >
+                        Game Over!
+                    </h1>
+                    <p id="final-score-text" class="text-xl text-gray-600 mb-6">
+                        Here are your results:
+                    </p>
+                    <div class="space-y-4 mb-8">
+                        <div class="bg-blue-100 p-4 rounded-lg">
+                            <span
+                                id="total-score-label"
+                                class="block text-sm text-blue-700 font-medium"
+                                >Total Score</span
+                            >
+                            <span
+                                id="total-score"
+                                class="block text-4xl font-bold text-blue-800"
+                                >0</span
+                            >
+                        </div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <span
+                                id="accuracy-label"
+                                class="block text-sm text-green-700 font-medium"
+                                >Accuracy</span
+                            >
+                            <span
+                                id="accuracy"
+                                class="block text-4xl font-bold text-green-800"
+                                >0%</span
+                            >
+                        </div>
+                        <div class="bg-amber-100 p-4 rounded-lg">
+                            <span
+                                id="found-label"
+                                class="block text-sm text-amber-700 font-medium"
+                                >Landmarks Found</span
+                            >
+                            <span
+                                id="found-count"
+                                class="block text-4xl font-bold text-amber-800"
+                                >0</span
+                            >
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button
+                            id="play-again-button"
+                            class="btn btn-secondary text-lg"
+                        >
+                            Play Again
+                        </button>
+                        <button
+                            id="share-button"
+                            class="btn btn-primary text-lg"
+                        >
+                            Share Results
+                        </button>
+                        <button
+                            id="submit-score-button"
+                            class="btn btn-confirm text-lg"
+                        >
+                            Submit Score
+                        </button>
+                        <button
+                            id="view-leaderboard-button"
+                            class="btn btn-primary text-lg"
+                        >
+                            View Leaderboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                id="share-modal"
+                class="hidden fixed inset-0 bg-black/50 z-30 flex items-center justify-center p-4"
+            >
+                <div
+                    class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full relative"
+                >
+                    <button
+                        id="close-modal-button"
+                        aria-label="Close"
+                        class="absolute top-2 right-3 text-3xl text-gray-500 hover:text-gray-800"
+                    >
+                        &times;
+                    </button>
+                    <h3
+                        id="share-modal-title"
+                        class="text-xl font-semibold mb-4"
+                    >
+                        Share Your Results!
+                    </h3>
+                    <p id="share-modal-desc" class="text-gray-600 mb-4">
+                        Right-click or long-press the image to save and share
+                        it.
+                    </p>
+                    <img
+                        id="share-image-preview"
+                        src=""
+                        alt="Results"
+                        class="w-full border rounded-lg"
+                    />
+                </div>
+            </div>
+
+            <div
+                id="submit-modal"
+                class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4"
+            >
+                <div
+                    class="bg-white p-4 rounded-lg shadow-xl max-w-xl w-full h-5/6 relative flex flex-col"
+                >
+                    <div class="flex justify-between items-center mb-4">
+                        <h3
+                            id="submit-modal-title"
+                            class="text-xl font-semibold"
+                        >
+                            Submit Your Score
+                        </h3>
+                        <button
+                            id="close-submit-modal-button"
+                            aria-label="Close"
+                            class="text-3xl text-gray-500 hover:text-gray-800"
+                        >
+                            &times;
+                        </button>
+                    </div>
+                    <div class="flex-grow w-full h-full">
+                        <iframe
+                            id="survey-iframe"
+                            class="w-full h-full border-0"
+                            src=""
+                        ></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                id="leaderboard-modal"
+                class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4"
+            >
+                <div
+                    class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full relative h-5/6 flex flex-col"
+                >
+                    <div class="flex justify-between items-center mb-4">
+                        <h3
+                            id="leaderboard-modal-title"
+                            class="text-xl font-semibold"
+                        >
+                            Top Scorers
+                        </h3>
+                        <button
+                            id="close-leaderboard-modal-button"
+                            aria-label="Close"
+                            class="text-3xl text-gray-500 hover:text-gray-800"
+                        >
+                            &times;
+                        </button>
+                    </div>
+                    <div id="leaderboard-loading" class="text-center py-10">
+                        <div
+                            class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto"
+                        ></div>
+                        <p
+                            id="leaderboard-loading-text"
+                            class="mt-4 text-gray-600"
+                        >
+                            Loading leaderboard...
+                        </p>
+                    </div>
+                    <ul
+                        id="leaderboard-list"
+                        class="list-inside space-y-3 overflow-y-auto"
+                    ></ul>
+                </div>
+            </div>
+
+            <div
+                id="share-card"
+                class="hidden w-[400px] bg-white p-6 border-4 border-blue-600"
+            >
+                <div class="flex justify-between items-center mb-4">
+                    <h3
+                        id="share-card-title"
+                        class="text-xl font-bold text-gray-800"
+                    >
+                        My Landmark Score!
+                    </h3>
+                    <img
+                        id="share-logo"
+                        src="./assets/logo.svg"
+                        alt="App Logo"
+                        class="w-24 h-auto"
+                    />
+                </div>
+                <div class="mt-4 text-center">
+                    <div class="bg-blue-100 p-3 rounded-lg mb-3">
+                        <span
+                            id="share-card-score-label"
+                            class="block text-sm text-blue-700 font-medium"
+                            >Total Score</span
+                        >
+                        <span
+                            id="share-card-score"
+                            class="block text-3xl font-bold text-blue-800"
+                            >0</span
+                        >
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <span
+                                id="share-card-accuracy-label"
+                                class="block text-sm text-green-700 font-medium"
+                                >Accuracy</span
+                            >
+                            <span
+                                id="share-card-accuracy"
+                                class="block text-3xl font-bold text-green-800"
+                                >0%</span
+                            >
+                        </div>
+                        <div class="bg-amber-100 p-3 rounded-lg">
+                            <span
+                                id="share-card-found-label"
+                                class="block text-sm text-amber-700 font-medium"
+                                >Landmarks Found</span
+                            >
+                            <span
+                                id="share-card-found"
+                                class="block text-3xl font-bold text-amber-800"
+                                >0</span
+                            >
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-4" id="share-card-footer">
+                        ArcGIGuess
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game configuration. Edit config.js to make ArcGIGuess your own. -->
+        <script src="config.js"></script>
+        <script type="module" src="script.js"></script>
+    </body>
+</html>
