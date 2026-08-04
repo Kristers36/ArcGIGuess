@@ -254,9 +254,9 @@ window.ARCGIGUESS_CONFIG = {
             "A quick geo-guessing game: we show you a landmark, you pin it on the map. How well do you know the area?",
         // Preview image. Use an ABSOLUTE URL for reliable previews.
         // Recommended size: ~1200×630px. Reusing the README screenshot here.
-        image: "https://aelhussiny.github.io/arcgiguess/assets/screenshot.png",
+        image: "https://aelhussiny.github.io/ArcGIGuess/assets/screenshot.png",
         // The public URL where the game is hosted (used for og:url).
-        url: "https://aelhussiny.github.io/arcgiguess",
+        url: "https://aelhussiny.github.io/ArcGIGuess",
         // Your X/Twitter handle including the @ (optional).
         twitterHandle: "",
     },
