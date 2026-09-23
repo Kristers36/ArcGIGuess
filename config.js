@@ -21,10 +21,10 @@ window.ARCGIGUESS_CONFIG = {
      * ---------------------------------------------------------------------- */
 
     // The name of your game. Shown in the browser tab, share card, and messages.
-    appName: "ArcGIGuess",
+    appName: "Pazudusī Latvija: Atrodi vietu kartēs",
 
     // A short tagline used in the page title and as the default share-card footer.
-    tagline: "A geo-guessing game powered by the ArcGIS Maps SDK for JavaScript",
+    tagline: "Pārbaudiet savas zināšanas",
 
     // Text shown at the bottom of the shareable results card.
     // Set to null to fall back to `tagline`.
@@ -51,12 +51,12 @@ window.ARCGIGUESS_CONFIG = {
     // This is the item ID of a web map in ArcGIS Online / Enterprise.
     // If the web map is private, ArcGIS will automatically prompt the player
     // to sign in when the app loads.
-    webMapItemId: "707a71d354c540f78c2f9101eead4c09",
+    webMapItemId: "c61a0c96c36a4397aa8542fce258a4b4",
 
     // The title of the layer (inside the web map above) that holds your
     // landmarks. This layer is hidden during play — its features are the
     // "answers". Each feature should be a polygon (the landmark's footprint).
-    landmarkLayerTitle: "Dubai Landmarks",
+    landmarkLayerTitle: "Vietas",
 
     // Field names on the landmark layer.
     //   idField   — the unique ID field (used to fetch each landmark's photo).
@@ -115,9 +115,70 @@ window.ARCGIGUESS_CONFIG = {
     //                      Placeholders in {curly braces} are filled in by the app.
     languages: [
         {
-            code: "en",
+            code: "lv",
             dir: "ltr",
-            toggleLabel: "العربية",
+            toggleLabel: "English",
+            landmarkNameField: "name",
+            surveyLang: null,
+            strings: {
+                welcomeTitle: "Laipni lūdzam “Pazudusī Latvija”!",
+                // {scoringSummary} is generated from the `scoring` block above.
+                welcomeDesc:
+                    "Atrodi vietu. Atceries vēsturi. Pārbaudi sevi!Mēs parādīsim vēsturiskas vietas nosaukumu un attēlu. Vai vari to atrast kartē? <br><br>{scoringSummary}",
+                // Template for the auto-generated scoring explanation.
+                // Placeholders: {points} {bucket} {penalty} {min}
+                scoringSummaryTemplate:
+                    "- Atrodi vietu (vai nokļūsti {bucket}m attālumā): <strong>+{points} punkti</strong><br><strong>-{penalty} punkti</strong> par katriem {bucket}m no pareizās vietas, līdz pat {min} punktiem.",
+                startButton: "Sākt spēli",
+                loadingText: "Vietu ielādēšana...",
+                findLandmarkText: "Atrodi šo vietu:",
+                scoreDisplay: "Score: {score}",
+                roundDisplay: "Spēles kārta {current} / {total}",
+                confirmButton: "Apstiprināt minējumu",
+                correctTitle: "Pareizi!",
+                correctMessage:
+                    "Ideāli! Tu nopelniji <strong>+{roundScore} punktus</strong>.",
+                incorrectTitle: "Tik tuvu!",
+                incorrectMessage:
+                    "Tu biji <strong>{distance}m</strong> prom no pareizās vietas. Tu nopelnīji <strong>{roundScore} punktus </strong>. Šeit ir pareizā lokācija.",
+                nextButton: "Nākamā vieta.",
+                finishEarlyButton: "Pabeigt ātrāk",
+                finishEarlyConfirm: "Uzspiediet vēlreiz, lai noslēgtu spēli",
+                gameOverButton: "Rezultāti",
+                gameOverTitle: "Spēlē beidzās!",
+                finalScoreText: "Luk, tavi rezultāti:",
+                totalScoreLabel: "Kopējais punktu skaits",
+                accuracyLabel: "Precizitāte",
+                foundLabel: "Vietas atrastas",
+                playAgainButton: "Spēlēt atkal",
+                shareButton: "Dalīties ar rezultātiem",
+                // {score}, {appName}, and {url} (from social.url) are available.
+                shareText:
+                    "Es nopelnīju {score} punktus spēlē {appName}! Cik vietas tu vari atrast? Spēlē: {url}",
+                shareCardTitle: "Mans {appName} Rezultāts!",
+                shareCardScoreLabel: "Kopējie punkti",
+                shareCardAccuracyLabel: "Precizitāte",
+                shareModalTitle: "Dalīties ar rezultātiem!",
+                shareModalDesc:
+                    "Ar labo peles pogu noklikšķini uz attēla vai turi to nospiestu, lai to saglabātu un kopīgotu.",
+                webMapError: "Neizdevās ielādēt tīmekļa karti. Lūdzu, pārbaudi kartes ID.",
+                layerError:
+                    "Tīmekļa kartē neizdevās atrast apskates vietu slāni. Pārbaudi slāņa nosaukumu failā config.js.",
+                submitScoreButton: "Iesniegt rezultātu",
+                viewLeaderboardButton: "Rezultātu tabula",
+                submitModalTitle: "Iesniegt rezultātu",
+                leaderboardModalTitle: "Labākie spēlētāji",
+                leaderboardLoadingText: "Ielādē rezultātu tabulu...",
+                leaderboardError:
+                    "Neizdevās ielādēt labāko rezultātu datus. Lūdzu, mēģini vēlreiz vēlāk.",
+                noScores: "Pagaidām nav iesniegts neviens rezultāts.",
+                points: "punkti",
+            },
+        },
+        {
+            code: "ar",
+            dir: "rtl",
+            toggleLabel: "Latviešu",
             landmarkNameField: "name",
             surveyLang: null,
             strings: {
@@ -175,63 +236,6 @@ window.ARCGIGUESS_CONFIG = {
                 points: "points",
             },
         },
-        {
-            code: "ar",
-            dir: "rtl",
-            toggleLabel: "English",
-            landmarkNameField: "name_ar",
-            surveyLang: "ar",
-            strings: {
-                welcomeTitle: "أهلاً بك في ArcGIGuess!",
-                welcomeDesc:
-                    "اختبر معرفتك! سنعرض لك اسم وصورة معلم وعليك النقر على الخريطة حيث تعتقد أنه يقع.<br><br>{scoringSummary}",
-                scoringSummaryTemplate:
-                    "- إجابة صحيحة (أو ضمن {bucket}م): <strong>+{points} نقاط</strong><br>- ثم <strong>-{penalty} نقطة</strong> عن كل {bucket}م بعيداً، حتى {min}.",
-                startButton: "ابدأ اللعبة",
-                loadingText: "جاري تحميل المعالم...",
-                findLandmarkText: "ابحث عن هذا المعلم:",
-                scoreDisplay: "النتيجة: {score}",
-                roundDisplay: "الجولة {current} / {total}",
-                confirmButton: "تأكيد الإجابة",
-                correctTitle: "إجابة صحيحة!",
-                correctMessage:
-                    "أحسنت! لقد ربحت <strong>+{roundScore} نقاط</strong>.",
-                incorrectTitle: "أوه, قريبة جداً!",
-                incorrectMessage:
-                    "كنت بعيداً مسافة <strong>{distance}م</strong>. لقد ربحت <strong>{roundScore} نقاط</strong>. هذا هو الموقع الصحيح.",
-                nextButton: "المعلم التالي",
-                finishEarlyButton: "إنهاء مبكر",
-                finishEarlyConfirm: "انقر مجدداً لإنهاء اللعبة",
-                gameOverButton: "أظهر النتائج",
-                gameOverTitle: "انتهت اللعبة!",
-                finalScoreText: "ها هي نتيجتك:",
-                totalScoreLabel: "النتيجة الإجمالية",
-                accuracyLabel: "الدقة",
-                foundLabel: "المعالم التي عثرت عليها",
-                playAgainButton: "العب مجدداً",
-                shareButton: "شارك النتيجة",
-                shareText:
-                    "لقد سجلت {score} نقطة في {appName}! كم يمكنك أن تسجّل؟ العب على {url}",
-                shareCardTitle: "نتيجتي في ArcGIGuess!",
-                shareCardScoreLabel: "النتيجة الإجمالية",
-                shareCardAccuracyLabel: "الدقة",
-                shareModalTitle: "شارك نتيجتك!",
-                shareModalDesc:
-                    "انقر بزر الماوس الأيمن أو اضغط مطولاً على الصورة لحفظها ومشاركتها.",
-                webMapError: "لم نتمكن من تحميل الخريطة. يرجى التحقق من المعرف.",
-                layerError:
-                    "لم نتمكن من العثور على طبقة المعالم في الخريطة. تحقق من عنوان الطبقة في config.js.",
-                submitScoreButton: "إرسال النتيجة",
-                viewLeaderboardButton: "قائمة المتصدرين",
-                submitModalTitle: "إرسال نتيجتك",
-                leaderboardModalTitle: "أعلى النتائج",
-                leaderboardLoadingText: "جاري تحميل قائمة المتصدرين...",
-                leaderboardError:
-                    "لا يمكن تحميل قائمة المتصدرين. يرجى المحاولة لاحقاً.",
-                noScores: "لم يتم إرسال أي نتائج بعد.",
-                points: "نقاط",
-            },
-        },
     ],
 
     /* -------------------------------------------------------------------------
@@ -248,10 +252,10 @@ window.ARCGIGUESS_CONFIG = {
     // See the README's "Social sharing" section.
     social: {
         // Headline shown on the preview card.
-        title: "ArcGIGuess — Can you find the landmark?",
+        title: "Pazudusī Latvija: Atrodi vietu kartē",
         // One-line description under the headline.
         description:
-            "A quick geo-guessing game: we show you a landmark, you pin it on the map. How well do you know the area?",
+            "Atrodi vietu. Atceries vēsturi. Pārbaudi sevi! Mēs parādīsim vēsturiskas vietas nosaukumu un attēlu.",
         // Preview image. Use an ABSOLUTE URL for reliable previews.
         // Recommended size: ~1200×630px. Reusing the README screenshot here.
         image: "https://aelhussiny.github.io/ArcGIGuess/assets/screenshot.png",
@@ -274,7 +278,7 @@ window.ARCGIGUESS_CONFIG = {
     //   1. A Survey123 form that collects a name and a score.
     //   2. A public (or shared) view of that form's feature layer to read scores from.
     leaderboard: {
-        enabled: true,
+        enabled: false,
 
         // The share URL of your Survey123 form.
         survey123Url:
