@@ -117,14 +117,13 @@ window.ARCGIGUESS_CONFIG = {
         {
             code: "lv",
             dir: "ltr",
-            toggleLabel: "English",
             landmarkNameField: "name",
             surveyLang: null,
             strings: {
                 welcomeTitle: "Laipni lūdzam “Pazudusī Latvija”!",
                 // {scoringSummary} is generated from the `scoring` block above.
                 welcomeDesc:
-                    "Atrodi vietu. Atceries vēsturi. Pārbaudi sevi!Mēs parādīsim vēsturiskas vietas nosaukumu un attēlu. Vai vari to atrast kartē? <br><br>{scoringSummary}",
+                    "Atrodi vietu. Atceries vēsturi. Pārbaudi sevi! Mēs parādīsim vēsturiskas vietas nosaukumu un attēlu. Vai vari to atrast kartē? <br><br>{scoringSummary}",
                 // Template for the auto-generated scoring explanation.
                 // Placeholders: {points} {bucket} {penalty} {min}
                 scoringSummaryTemplate:
@@ -137,7 +136,7 @@ window.ARCGIGUESS_CONFIG = {
                 confirmButton: "Apstiprināt minējumu",
                 correctTitle: "Pareizi!",
                 correctMessage:
-                    "Ideāli! Tu nopelniji <strong>+{roundScore} punktus</strong>.",
+                    "Ideāli! Tu nopelnīji <strong>+{roundScore} punktus</strong>.",
                 incorrectTitle: "Tik tuvu!",
                 incorrectMessage:
                     "Tu biji <strong>{distance}m</strong> prom no pareizās vietas. Tu nopelnīji <strong>{roundScore} punktus </strong>. Šeit ir pareizā lokācija.",
@@ -175,66 +174,7 @@ window.ARCGIGUESS_CONFIG = {
                 points: "punkti",
             },
         },
-        {
-            code: "ar",
-            dir: "rtl",
-            toggleLabel: "Latviešu",
-            landmarkNameField: "name",
-            surveyLang: null,
-            strings: {
-                welcomeTitle: "Welcome to ArcGIGuess!",
-                // {scoringSummary} is generated from the `scoring` block above.
-                welcomeDesc:
-                    "Test your knowledge! We'll show you the name and a picture of a landmark, and you click on the map where you think it is.<br><br>{scoringSummary}",
-                // Template for the auto-generated scoring explanation.
-                // Placeholders: {points} {bucket} {penalty} {min}
-                scoringSummaryTemplate:
-                    "- Find it (or within {bucket}m): <strong>+{points} points</strong><br>- Then <strong>-{penalty} point</strong> for every {bucket}m you're off, down to {min}.",
-                startButton: "Start Game",
-                loadingText: "Loading Landmarks...",
-                findLandmarkText: "Find this landmark:",
-                scoreDisplay: "Score: {score}",
-                roundDisplay: "Round {current} / {total}",
-                confirmButton: "Confirm Guess",
-                correctTitle: "Correct!",
-                correctMessage:
-                    "Well done! You earned <strong>+{roundScore} points</strong>.",
-                incorrectTitle: "Oh, so close!",
-                incorrectMessage:
-                    "You were <strong>{distance}m</strong> away. You earned <strong>{roundScore} points</strong>. Here's the correct location.",
-                nextButton: "Next Landmark",
-                finishEarlyButton: "Finish early",
-                finishEarlyConfirm: "Tap again to end game",
-                gameOverButton: "Show Results",
-                gameOverTitle: "Game Over!",
-                finalScoreText: "Here are your results:",
-                totalScoreLabel: "Total Score",
-                accuracyLabel: "Accuracy",
-                foundLabel: "Landmarks Found",
-                playAgainButton: "Play Again",
-                shareButton: "Share Results",
-                // {score}, {appName}, and {url} (from social.url) are available.
-                shareText:
-                    "I scored {score} points in {appName}! How much can you score? Play at {url}",
-                shareCardTitle: "My {appName} Score!",
-                shareCardScoreLabel: "Total Score",
-                shareCardAccuracyLabel: "Accuracy",
-                shareModalTitle: "Share Your Results!",
-                shareModalDesc:
-                    "Right-click or long-press the image to save and share it.",
-                webMapError: "Could not load the web map. Please check the ID.",
-                layerError:
-                    "Could not find the landmark layer in the web map. Check the layer title in config.js.",
-                submitScoreButton: "Submit Score",
-                viewLeaderboardButton: "Leaderboard",
-                submitModalTitle: "Submit Your Score",
-                leaderboardModalTitle: "Top Scorers",
-                leaderboardLoadingText: "Loading leaderboard...",
-                leaderboardError:
-                    "Could not load leaderboard data. Please try again later.",
-                noScores: "No scores submitted yet.",
-                points: "points",
-            },
+        
         },
     ],
 
