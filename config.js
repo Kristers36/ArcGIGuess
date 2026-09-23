@@ -61,7 +61,7 @@ window.ARCGIGUESS_CONFIG = {
     // Field names on the landmark layer.
     //   idField   — the unique ID field (used to fetch each landmark's photo).
     //   The per-language name fields are defined in the `languages` array below.
-    landmarkIdField: "OBJECTID",
+    landmarkIdField: "FID",
 
     // How many landmarks to play per game. Set to null to use every landmark
     // in the layer. If you have 40 landmarks and set this to 10, each game
@@ -117,7 +117,7 @@ window.ARCGIGUESS_CONFIG = {
         {
             code: "lv",
             dir: "ltr",
-            landmarkNameField: "name",
+            landmarkNameField: "Name",
             surveyLang: null,
             strings: {
                 welcomeTitle: "Laipni lūdzam “Pazudusī Latvija”!",
@@ -173,8 +173,6 @@ window.ARCGIGUESS_CONFIG = {
                 noScores: "Pagaidām nav iesniegts neviens rezultāts.",
                 points: "punkti",
             },
-        },
-        
         },
     ],
 
