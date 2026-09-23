@@ -62,7 +62,7 @@ $arcgis
 
         const DEFAULT_LANG = LANGUAGES[0];
 
-        let currentLanguage = DEFAULT_LANG.code;
+        let currentLanguage = DEFAULT_LANG ? DEFAULT_LANG.code : "lv";
         let gameState = "LOADING";
 
         let landmarkPool = [];
@@ -134,12 +134,16 @@ $arcgis
             const active = currentLang();
 
             let text =
-                (active.strings && active.strings[key]) ||
-                (DEFAULT_LANG.strings && DEFAULT_LANG.strings[key]) ||
+                (active &&
+                    active.strings &&
+                    active.strings[key]) ||
+                (DEFAULT_LANG &&
+                    DEFAULT_LANG.strings &&
+                    DEFAULT_LANG.strings[key]) ||
                 key;
 
             const values = {
-                appName: CONFIG.appName,
+                appName: CONFIG.appName || "",
                 url: (CONFIG.social && CONFIG.social.url) || "",
                 ...replacements,
             };
@@ -152,7 +156,12 @@ $arcgis
         }
 
         function buildScoringSummary() {
-            const s = CONFIG.scoring;
+            const s = CONFIG.scoring || {
+                pointsForHit: 10,
+                bucketMeters: 500,
+                penaltyPerBucket: 1,
+                minScore: 0,
+            };
 
             return t("scoringSummaryTemplate", {
                 points: s.pointsForHit,
@@ -162,13 +171,28 @@ $arcgis
             });
         }
 
+        function showPanel(panelName) {
+            for (const panel of Object.values(panels)) {
+                if (panel) {
+                    panel.classList.add("hidden");
+                }
+            }
+
+            if (panels[panelName]) {
+                panels[panelName].classList.remove("hidden");
+            }
+        }
+
         function updateUI() {
+            const activeLang = currentLang();
+
             document.documentElement.lang = currentLanguage;
-            document.body.dir = currentLang().dir || "ltr";
+            document.body.dir = (activeLang && activeLang.dir) || "ltr";
 
             if (buttons.langToggle) {
                 buttons.langToggle.innerText =
-                    currentLang().toggleLabel || currentLanguage.toUpperCase();
+                    (activeLang && activeLang.toggleLabel) ||
+                    currentLanguage.toUpperCase();
 
                 buttons.langToggle.classList.toggle(
                     "hidden",
@@ -285,7 +309,9 @@ $arcgis
             }
 
             if ($("leaderboard-modal-title")) {
-                $("leaderboard-modal-title").innerText = t("leaderboardModalTitle");
+                $("leaderboard-modal-title").innerText = t(
+                    "leaderboardModalTitle"
+                );
             }
 
             if ($("leaderboard-loading-text")) {
@@ -312,29 +338,17 @@ $arcgis
                 $("share-card-found-label").innerText = t("foundLabel");
             }
 
-            for (const panel of Object.values(panels)) {
-                if (panel) {
-                    panel.classList.add("hidden");
-                }
-            }
-
             switch (gameState) {
                 case "LOADING":
-                    if (panels.loading) {
-                        panels.loading.classList.remove("hidden");
-                    }
+                    showPanel("loading");
                     break;
 
                 case "START":
-                    if (panels.start) {
-                        panels.start.classList.remove("hidden");
-                    }
+                    showPanel("start");
                     break;
 
                 case "PLAYING":
-                    if (panels.game) {
-                        panels.game.classList.remove("hidden");
-                    }
+                    showPanel("game");
 
                     if (buttons.confirm) {
                         buttons.confirm.classList.toggle("hidden", !clickedPoint);
@@ -342,15 +356,11 @@ $arcgis
                     break;
 
                 case "ROUND_RESULT":
-                    if (panels.roundResult) {
-                        panels.roundResult.classList.remove("hidden");
-                    }
+                    showPanel("roundResult");
                     break;
 
                 case "GAME_OVER":
-                    if (panels.gameOver) {
-                        panels.gameOver.classList.remove("hidden");
-                    }
+                    showPanel("gameOver");
                     break;
             }
         }
@@ -396,7 +406,8 @@ $arcgis
                 return "Nezināma vieta";
             }
 
-            const field = currentLang().landmarkNameField;
+            const lang = currentLang();
+            const field = (lang && lang.landmarkNameField) || "Name";
 
             return feature.attributes[field] || "Nezināma vieta";
         }
@@ -410,10 +421,7 @@ $arcgis
                 return String(feature.attributes.imageUrl).trim();
             }
 
-            const field = CONFIG.landmarkPhotoField;
-
-            if (!field) return null;
-
+            const field = CONFIG.landmarkPhotoField || "Photo";
             const value = feature.attributes[field];
 
             if (!value) return null;
@@ -422,7 +430,7 @@ $arcgis
         }
 
         function getTargetGeometry(feature) {
-            return feature.geometry;
+            return feature ? feature.geometry : null;
         }
 
         function getDistanceMeters(targetGeometry, guessPoint) {
@@ -450,7 +458,10 @@ $arcgis
         function isDirectHit(targetGeometry, guessPoint) {
             if (!targetGeometry || !guessPoint) return false;
 
-            const scoring = CONFIG.scoring;
+            const scoring = CONFIG.scoring || {
+                bucketMeters: 500,
+            };
+
             const distance = getDistanceMeters(targetGeometry, guessPoint);
 
             return distance <= scoring.bucketMeters;
@@ -470,6 +481,11 @@ $arcgis
 
         async function init() {
             try {
+                if (!mapEl) {
+                    alert("Kartes elements <arcgis-map> nav atrasts index.html failā.");
+                    return;
+                }
+
                 if (CONFIG.portalUrl) {
                     esriConfig.portalUrl = CONFIG.portalUrl;
                 }
@@ -484,15 +500,22 @@ $arcgis
 
                 await webmap.load();
 
+                console.log(
+                    "WebMap layers:",
+                    webmap.layers.map((layer) => layer.title).toArray
+                        ? webmap.layers.map((layer) => layer.title).toArray()
+                        : webmap.layers.map((layer) => layer.title)
+                );
+
                 landmarksLayer = webmap.layers.find(
-                    (layer) => layer.title === CONFIG.landmarkLayerTitle
+                    (layer) => layer.title === "Vietas"
                 );
 
                 if (!landmarksLayer) {
-                    console.error(
-                        `Layer not found: ${CONFIG.landmarkLayerTitle}`
+                    console.error("Layer not found: Vietas");
+                    alert(
+                        "Tīmekļa kartē neizdevās atrast slāni “Vietas”. Pārbaudi, vai layer name tiešām ir Vietas."
                     );
-                    alert(t("layerError"));
                     return;
                 }
 
@@ -507,7 +530,11 @@ $arcgis
                 updateUI();
             } catch (error) {
                 console.error("Initialization error:", error);
-                alert(t("webMapError"));
+
+                alert(
+                    "Neizdevās ielādēt spēles datus. Pārbaudi Web Map ID, slāni “Vietas”, publisko piekļuvi un laukus FID/Name/Photo."
+                );
+
                 gameState = "LOADING";
                 updateUI();
             }
@@ -519,30 +546,26 @@ $arcgis
 
                 query.where = "1=1";
 
-                const nameFields = CONFIG.languages.map(
-                    (l) => l.landmarkNameField
-                );
-
-                query.outFields = [
-                    ...new Set([
-                        ...nameFields,
-                        CONFIG.landmarkIdField,
-                        CONFIG.landmarkPhotoField,
-                    ].filter(Boolean)),
-                ];
+                /*
+                 * Drošākais variants:
+                 * ņemam visus laukus, lai nekristu kļūda, ja FID/Photo/Name
+                 * ArcGIS pusē ir field alias vai lauks nav pieprasāms atsevišķi.
+                 */
+                query.outFields = ["*"];
 
                 query.returnGeometry = true;
 
                 return landmarksLayer
                     .queryFeatures(query)
                     .then((featureSet) => {
+                        console.log("FeatureSet:", featureSet);
+
                         const landmarks = featureSet.features.filter((feature) => {
-                            return feature.geometry && getLandmarkName(feature);
+                            return feature.geometry;
                         });
 
                         landmarks.forEach((feature) => {
-                            const photoUrl =
-                                feature.attributes[CONFIG.landmarkPhotoField];
+                            const photoUrl = feature.attributes.Photo;
 
                             feature.attributes.imageUrl = photoUrl
                                 ? String(photoUrl).trim()
@@ -554,9 +577,16 @@ $arcgis
 
                         console.log("Landmarks loaded:", landmarkPool);
 
+                        if (landmarkPool[0]) {
+                            console.log(
+                                "First feature attributes:",
+                                landmarkPool[0].attributes
+                            );
+                        }
+
                         if (!landmarkPool.length) {
                             alert(
-                                "Netika atrasta neviena vieta. Pārbaudi slāņa laukus OBJECTID, Name, Photo un ģeometriju."
+                                "Netika atrasta neviena vieta. Pārbaudi, vai slānī “Vietas” ir punkti/poligoni ar ģeometriju."
                             );
                         }
 
@@ -564,12 +594,18 @@ $arcgis
                     })
                     .catch((error) => {
                         console.error("Error querying landmark data:", error);
-                        alert("Neizdevās ielādēt vietu datus.");
+
+                        alert(
+                            "Neizdevās ielādēt vietu datus. Pārbaudi, vai slānis “Vietas” ir publisks un vai tam ir ieslēgta Query/Extract piekļuve."
+                        );
+
                         return Promise.reject(error);
                     });
             } catch (error) {
                 console.error("Error creating query:", error);
-                alert("Neizdevās ielādēt vietu datus.");
+
+                alert("Neizdevās izveidot vietu datu pieprasījumu.");
+
                 return Promise.reject(error);
             }
         }
@@ -580,7 +616,9 @@ $arcgis
             accuracyTracker = [];
             clickedPoint = null;
 
-            mapEl.graphics.removeAll();
+            if (mapEl.graphics) {
+                mapEl.graphics.removeAll();
+            }
 
             allLandmarks = CONFIG.shuffleLandmarks
                 ? shuffleArray(landmarkPool.slice())
@@ -601,7 +639,9 @@ $arcgis
         function startRound() {
             clickedPoint = null;
 
-            mapEl.graphics.removeAll();
+            if (mapEl.graphics) {
+                mapEl.graphics.removeAll();
+            }
 
             resetFinishEarly();
 
@@ -614,27 +654,44 @@ $arcgis
                 $("landmark-name").innerText = name;
             }
 
-            if (imageUrl) {
+            if (imageUrl && imageElements.container && imageElements.image) {
                 imageElements.container.classList.remove("hidden");
                 imageElements.image.classList.add("hidden");
-                imageElements.spinner.classList.remove("hidden");
+
+                if (imageElements.spinner) {
+                    imageElements.spinner.classList.remove("hidden");
+                }
 
                 imageElements.image.onload = () => {
                     imageElements.image.classList.remove("hidden");
-                    imageElements.spinner.classList.add("hidden");
+
+                    if (imageElements.spinner) {
+                        imageElements.spinner.classList.add("hidden");
+                    }
                 };
 
                 imageElements.image.onerror = () => {
                     imageElements.container.classList.add("hidden");
-                    imageElements.spinner.classList.add("hidden");
+
+                    if (imageElements.spinner) {
+                        imageElements.spinner.classList.add("hidden");
+                    }
                 };
 
                 imageElements.image.src = imageUrl;
                 imageElements.image.alt = name;
             } else {
-                imageElements.container.classList.add("hidden");
-                imageElements.spinner.classList.add("hidden");
-                imageElements.image.removeAttribute("src");
+                if (imageElements.container) {
+                    imageElements.container.classList.add("hidden");
+                }
+
+                if (imageElements.spinner) {
+                    imageElements.spinner.classList.add("hidden");
+                }
+
+                if (imageElements.image) {
+                    imageElements.image.removeAttribute("src");
+                }
             }
 
             gameState = "PLAYING";
@@ -648,7 +705,9 @@ $arcgis
 
             clickedPoint = mapPoint;
 
-            mapEl.graphics.removeAll();
+            if (mapEl.graphics) {
+                mapEl.graphics.removeAll();
+            }
 
             const pinGraphic = new Graphic({
                 geometry: clickedPoint,
@@ -708,7 +767,12 @@ $arcgis
             const targetLandmark = allLandmarks[currentLandmarkIndex];
             const targetGeometry = getTargetGeometry(targetLandmark);
 
-            const scoring = CONFIG.scoring;
+            const scoring = CONFIG.scoring || {
+                pointsForHit: 10,
+                bucketMeters: 500,
+                penaltyPerBucket: 1,
+                minScore: 0,
+            };
 
             const distanceInMeters = getDistanceMeters(
                 targetGeometry,
@@ -958,7 +1022,7 @@ $arcgis
 
             let url = `${LEADERBOARD.survey123Url}?${fieldId}=${totalScore}&hide=navbar,header,description,footer,${fieldId}`;
 
-            const surveyLang = currentLang().surveyLang;
+            const surveyLang = currentLang() && currentLang().surveyLang;
 
             if (surveyLang) {
                 url += `&lang=${surveyLang}`;
