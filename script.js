@@ -17,7 +17,6 @@ $arcgis
         const LEADERBOARD = CONFIG.leaderboard || {};
 
         const $ = (id) => document.getElementById(id);
-
         const mapEl = document.querySelector("arcgis-map");
 
         const panels = {
@@ -56,6 +55,7 @@ $arcgis
 
         const LANGUAGES = CONFIG.languages || [];
         const LANG_BY_CODE = {};
+
         LANGUAGES.forEach((lang) => {
             LANG_BY_CODE[lang.code] = lang;
         });
@@ -176,56 +176,93 @@ $arcgis
                 );
             }
 
-            $("welcome-title").innerHTML = t("welcomeTitle");
+            if ($("welcome-title")) {
+                $("welcome-title").innerHTML = t("welcomeTitle");
+            }
 
-            $("welcome-desc").innerHTML = t("welcomeDesc", {
-                scoringSummary: buildScoringSummary(),
-            });
+            if ($("welcome-desc")) {
+                $("welcome-desc").innerHTML = t("welcomeDesc", {
+                    scoringSummary: buildScoringSummary(),
+                });
+            }
 
-            buttons.start.innerText = t("startButton");
+            if (buttons.start) {
+                buttons.start.innerText = t("startButton");
+            }
 
-            $("loading-text").innerText = t("loadingText");
+            if ($("loading-text")) {
+                $("loading-text").innerText = t("loadingText");
+            }
 
-            $("find-landmark-text").innerText = t("findLandmarkText");
+            if ($("find-landmark-text")) {
+                $("find-landmark-text").innerText = t("findLandmarkText");
+            }
 
-            $("score-display").innerText = t("scoreDisplay", {
-                score: totalScore,
-            });
+            if ($("score-display")) {
+                $("score-display").innerText = t("scoreDisplay", {
+                    score: totalScore,
+                });
+            }
 
-            if (allLandmarks.length > 0) {
+            if ($("round-display") && allLandmarks.length > 0) {
                 $("round-display").innerText = t("roundDisplay", {
                     current: currentLandmarkIndex + 1,
                     total: allLandmarks.length,
                 });
             }
 
-            buttons.confirm.innerText = t("confirmButton");
+            if (buttons.confirm) {
+                buttons.confirm.innerText = t("confirmButton");
+            }
 
             const canFinishEarly =
                 CONFIG.allowFinishEarly &&
                 gameState === "PLAYING" &&
                 currentLandmarkIndex < allLandmarks.length - 1;
 
-            buttons.finishEarly.classList.toggle("hidden", !canFinishEarly);
+            if (buttons.finishEarly) {
+                buttons.finishEarly.classList.toggle("hidden", !canFinishEarly);
 
-            if (!finishEarlyArmed) {
-                buttons.finishEarly.innerText = t("finishEarlyButton");
+                if (!finishEarlyArmed) {
+                    buttons.finishEarly.innerText = t("finishEarlyButton");
+                }
             }
 
-            buttons.next.innerText = t(
-                currentLandmarkIndex === allLandmarks.length - 1
-                    ? "gameOverButton"
-                    : "nextButton"
-            );
+            if (buttons.next) {
+                buttons.next.innerText = t(
+                    currentLandmarkIndex === allLandmarks.length - 1
+                        ? "gameOverButton"
+                        : "nextButton"
+                );
+            }
 
-            $("game-over-title").innerText = t("gameOverTitle");
-            $("final-score-text").innerText = t("finalScoreText");
-            $("total-score-label").innerText = t("totalScoreLabel");
-            $("accuracy-label").innerText = t("accuracyLabel");
-            $("found-label").innerText = t("foundLabel");
+            if ($("game-over-title")) {
+                $("game-over-title").innerText = t("gameOverTitle");
+            }
 
-            buttons.playAgain.innerText = t("playAgainButton");
-            buttons.share.innerText = t("shareButton");
+            if ($("final-score-text")) {
+                $("final-score-text").innerText = t("finalScoreText");
+            }
+
+            if ($("total-score-label")) {
+                $("total-score-label").innerText = t("totalScoreLabel");
+            }
+
+            if ($("accuracy-label")) {
+                $("accuracy-label").innerText = t("accuracyLabel");
+            }
+
+            if ($("found-label")) {
+                $("found-label").innerText = t("foundLabel");
+            }
+
+            if (buttons.playAgain) {
+                buttons.playAgain.innerText = t("playAgainButton");
+            }
+
+            if (buttons.share) {
+                buttons.share.innerText = t("shareButton");
+            }
 
             if (buttons.submitScore) {
                 buttons.submitScore.innerText = t("submitScoreButton");
@@ -276,29 +313,44 @@ $arcgis
             }
 
             for (const panel of Object.values(panels)) {
-                if (panel) panel.classList.add("hidden");
+                if (panel) {
+                    panel.classList.add("hidden");
+                }
             }
 
             switch (gameState) {
                 case "LOADING":
-                    panels.loading.classList.remove("hidden");
+                    if (panels.loading) {
+                        panels.loading.classList.remove("hidden");
+                    }
                     break;
 
                 case "START":
-                    panels.start.classList.remove("hidden");
+                    if (panels.start) {
+                        panels.start.classList.remove("hidden");
+                    }
                     break;
 
                 case "PLAYING":
-                    panels.game.classList.remove("hidden");
-                    buttons.confirm.classList.toggle("hidden", !clickedPoint);
+                    if (panels.game) {
+                        panels.game.classList.remove("hidden");
+                    }
+
+                    if (buttons.confirm) {
+                        buttons.confirm.classList.toggle("hidden", !clickedPoint);
+                    }
                     break;
 
                 case "ROUND_RESULT":
-                    panels.roundResult.classList.remove("hidden");
+                    if (panels.roundResult) {
+                        panels.roundResult.classList.remove("hidden");
+                    }
                     break;
 
                 case "GAME_OVER":
-                    panels.gameOver.classList.remove("hidden");
+                    if (panels.gameOver) {
+                        panels.gameOver.classList.remove("hidden");
+                    }
                     break;
             }
         }
@@ -316,13 +368,17 @@ $arcgis
 
             if (gameState === "PLAYING" && allLandmarks[currentLandmarkIndex]) {
                 const landmark = allLandmarks[currentLandmarkIndex];
-                $("landmark-name").innerText = getLandmarkName(landmark);
+
+                if ($("landmark-name")) {
+                    $("landmark-name").innerText = getLandmarkName(landmark);
+                }
             }
         }
 
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
+
                 [array[i], array[j]] = [array[j], array[i]];
             }
 
@@ -336,11 +392,24 @@ $arcgis
         }
 
         function getLandmarkName(feature) {
+            if (!feature || !feature.attributes) {
+                return "Nezināma vieta";
+            }
+
             const field = currentLang().landmarkNameField;
+
             return feature.attributes[field] || "Nezināma vieta";
         }
 
         function getLandmarkPhoto(feature) {
+            if (!feature || !feature.attributes) {
+                return null;
+            }
+
+            if (feature.attributes.imageUrl) {
+                return String(feature.attributes.imageUrl).trim();
+            }
+
             const field = CONFIG.landmarkPhotoField;
 
             if (!field) return null;
@@ -360,15 +429,19 @@ $arcgis
             if (!targetGeometry || !guessPoint) return 0;
 
             try {
-                const distance = distanceOperator.execute(targetGeometry, guessPoint, {
-                    unit: "meters",
-                });
+                const distance = distanceOperator.execute(
+                    targetGeometry,
+                    guessPoint,
+                    {
+                        unit: "meters",
+                    }
+                );
 
                 if (typeof distance === "number" && !Number.isNaN(distance)) {
                     return Math.max(0, distance);
                 }
             } catch (error) {
-                console.warn("Distance operator failed:", error);
+                console.warn("Distance calculation failed:", error);
             }
 
             return 0;
@@ -384,7 +457,9 @@ $arcgis
         }
 
         function getResultSymbol(geometry, gotFullPoints) {
-            if (!geometry) return correctPointSymbol;
+            if (!geometry) {
+                return correctPointSymbol;
+            }
 
             if (geometry.type === "polygon" || geometry.type === "extent") {
                 return gotFullPoints ? correctAreaSymbol : incorrectAreaSymbol;
@@ -428,6 +503,7 @@ $arcgis
                 await loadGameData();
 
                 gameState = "START";
+
                 updateUI();
             } catch (error) {
                 console.error("Initialization error:", error);
@@ -437,14 +513,14 @@ $arcgis
             }
         }
 
-        async function loadGameData() {
+        function loadGameData() {
             try {
                 const query = landmarksLayer.createQuery();
 
                 query.where = "1=1";
 
                 const nameFields = CONFIG.languages.map(
-                    (lang) => lang.landmarkNameField
+                    (l) => l.landmarkNameField
                 );
 
                 query.outFields = [
@@ -457,24 +533,44 @@ $arcgis
 
                 query.returnGeometry = true;
 
-                const featureSet = await landmarksLayer.queryFeatures(query);
+                return landmarksLayer
+                    .queryFeatures(query)
+                    .then((featureSet) => {
+                        const landmarks = featureSet.features.filter((feature) => {
+                            return feature.geometry && getLandmarkName(feature);
+                        });
 
-                landmarkPool = featureSet.features.filter((feature) => {
-                    return feature.geometry && getLandmarkName(feature);
-                });
+                        landmarks.forEach((feature) => {
+                            const photoUrl =
+                                feature.attributes[CONFIG.landmarkPhotoField];
 
-                allLandmarks = landmarkPool.slice();
+                            feature.attributes.imageUrl = photoUrl
+                                ? String(photoUrl).trim()
+                                : null;
+                        });
 
-                if (!landmarkPool.length) {
-                    console.error("No landmarks found in layer.");
-                    alert("Netika atrasta neviena vieta. Pārbaudi slāņa laukus un ģeometriju.");
-                }
+                        landmarkPool = landmarks;
+                        allLandmarks = landmarks.slice();
 
-                console.log("Loaded landmarks:", landmarkPool);
+                        console.log("Landmarks loaded:", landmarkPool);
+
+                        if (!landmarkPool.length) {
+                            alert(
+                                "Netika atrasta neviena vieta. Pārbaudi slāņa laukus OBJECTID, Name, Photo un ģeometriju."
+                            );
+                        }
+
+                        return landmarks;
+                    })
+                    .catch((error) => {
+                        console.error("Error querying landmark data:", error);
+                        alert("Neizdevās ielādēt vietu datus.");
+                        return Promise.reject(error);
+                    });
             } catch (error) {
-                console.error("Could not load landmark data:", error);
+                console.error("Error creating query:", error);
                 alert("Neizdevās ielādēt vietu datus.");
-                throw error;
+                return Promise.reject(error);
             }
         }
 
@@ -504,6 +600,7 @@ $arcgis
 
         function startRound() {
             clickedPoint = null;
+
             mapEl.graphics.removeAll();
 
             resetFinishEarly();
@@ -513,7 +610,9 @@ $arcgis
             const name = getLandmarkName(landmark);
             const imageUrl = getLandmarkPhoto(landmark);
 
-            $("landmark-name").innerText = name;
+            if ($("landmark-name")) {
+                $("landmark-name").innerText = name;
+            }
 
             if (imageUrl) {
                 imageElements.container.classList.remove("hidden");
@@ -623,7 +722,10 @@ $arcgis
             if (hit) {
                 roundScore = scoring.pointsForHit;
             } else {
-                const bands = Math.floor(distanceInMeters / scoring.bucketMeters);
+                const bands = Math.floor(
+                    distanceInMeters / scoring.bucketMeters
+                );
+
                 const penalty = bands * scoring.penaltyPerBucket;
 
                 roundScore = Math.max(
@@ -654,12 +756,17 @@ $arcgis
 
             totalScore += roundScore;
 
-            $("round-result-title").innerText = resultTitle;
-            $("round-result-message").innerHTML = resultMessage;
+            if ($("round-result-title")) {
+                $("round-result-title").innerText = resultTitle;
 
-            $("round-result-title").style.color = gotFullPoints
-                ? "#16a34a"
-                : "#dc2626";
+                $("round-result-title").style.color = gotFullPoints
+                    ? "#16a34a"
+                    : "#dc2626";
+            }
+
+            if ($("round-result-message")) {
+                $("round-result-message").innerHTML = resultMessage;
+            }
 
             const answerGraphic = new Graphic({
                 geometry: targetGeometry,
@@ -671,6 +778,7 @@ $arcgis
             goToAnswer(targetGeometry);
 
             gameState = "ROUND_RESULT";
+
             updateUI();
         }
 
@@ -698,8 +806,10 @@ $arcgis
                 finishEarlyTimer = null;
             }
 
-            buttons.finishEarly.classList.remove("armed");
-            buttons.finishEarly.innerText = t("finishEarlyButton");
+            if (buttons.finishEarly) {
+                buttons.finishEarly.classList.remove("armed");
+                buttons.finishEarly.innerText = t("finishEarlyButton");
+            }
         }
 
         function handleFinishEarly() {
@@ -738,13 +848,24 @@ $arcgis
             updateUI();
 
             const total = allLandmarks.length || 1;
-            const foundCount = accuracyTracker.filter((value) => value === 1).length;
+            const foundCount = accuracyTracker.filter(
+                (value) => value === 1
+            ).length;
+
             const accuracy = Math.round((foundCount / total) * 100);
             const foundText = `${foundCount} / ${allLandmarks.length}`;
 
-            $("total-score").innerText = totalScore;
-            $("accuracy").innerText = `${accuracy}%`;
-            $("found-count").innerText = foundText;
+            if ($("total-score")) {
+                $("total-score").innerText = totalScore;
+            }
+
+            if ($("accuracy")) {
+                $("accuracy").innerText = `${accuracy}%`;
+            }
+
+            if ($("found-count")) {
+                $("found-count").innerText = foundText;
+            }
 
             if ($("share-card-score")) {
                 $("share-card-score").innerText = totalScore;
@@ -761,6 +882,10 @@ $arcgis
 
         function shareResults() {
             const shareCard = $("share-card");
+
+            if (!shareCard || typeof html2canvas === "undefined") {
+                return;
+            }
 
             const fileName = `${CONFIG.appName
                 .replace(/\s+/g, "-")
@@ -800,38 +925,26 @@ $arcgis
                             });
                         }
 
-                        $("share-image-preview").src = dataUrl;
-                        panels.shareModal.classList.remove("hidden");
+                        if ($("share-image-preview")) {
+                            $("share-image-preview").src = dataUrl;
+                        }
+
+                        if (panels.shareModal) {
+                            panels.shareModal.classList.remove("hidden");
+                        }
                     })
                     .catch((error) => {
                         console.error("Share error:", error);
 
                         hideShareCard();
-
-                        html2canvas($("share-card"), {
-                            scale: 2,
-                            useCORS: true,
-                        })
-                            .then((canvas) => {
-                                $("share-image-preview").src =
-                                    canvas.toDataURL("image/png");
-
-                                panels.shareModal.classList.remove("hidden");
-                            })
-                            .catch((fallbackError) => {
-                                console.error(
-                                    "Fallback share image error:",
-                                    fallbackError
-                                );
-
-                                hideShareCard();
-                            });
                     });
             }, 100);
         }
 
         function hideShareCard() {
             const shareCard = $("share-card");
+
+            if (!shareCard) return;
 
             shareCard.classList.add("hidden");
             shareCard.style.position = "";
@@ -851,9 +964,13 @@ $arcgis
                 url += `&lang=${surveyLang}`;
             }
 
-            $("survey-iframe").src = url;
+            if ($("survey-iframe")) {
+                $("survey-iframe").src = url;
+            }
 
-            panels.submitModal.classList.remove("hidden");
+            if (panels.submitModal) {
+                panels.submitModal.classList.remove("hidden");
+            }
         }
 
         function showLeaderboard() {
@@ -914,8 +1031,7 @@ $arcgis
 
                 const name = `${firstName} ${lastName}`.trim() || "Anonymous";
 
-                const score =
-                    feature.attributes[LEADERBOARD.scoreField] || 0;
+                const score = feature.attributes[LEADERBOARD.scoreField] || 0;
 
                 const li = document.createElement("li");
                 li.className =
@@ -942,7 +1058,9 @@ $arcgis
             const logoAlt = `${CONFIG.appName} Logo`;
 
             [$("start-logo"), $("share-logo")].forEach((img) => {
-                if (img) img.alt = logoAlt;
+                if (img) {
+                    img.alt = logoAlt;
+                }
             });
 
             if ($("share-card-footer")) {
@@ -991,26 +1109,49 @@ $arcgis
             setMeta('meta[name="twitter:creator"]', s.twitterHandle);
         }
 
-        mapEl.addEventListener("arcgisViewClick", (event) => {
-            if (clicksEnabled) {
-                handleMapClick(event.detail.mapPoint);
-            }
-        });
+        if (mapEl) {
+            mapEl.addEventListener("arcgisViewClick", (event) => {
+                if (clicksEnabled) {
+                    handleMapClick(event.detail.mapPoint);
+                }
+            });
+        }
 
         if (buttons.langToggle) {
             buttons.langToggle.addEventListener("click", toggleLanguage);
         }
 
-        buttons.start.addEventListener("click", startGame);
-        buttons.confirm.addEventListener("click", confirmGuess);
-        buttons.next.addEventListener("click", nextRound);
-        buttons.finishEarly.addEventListener("click", handleFinishEarly);
-        buttons.playAgain.addEventListener("click", startGame);
-        buttons.share.addEventListener("click", shareResults);
+        if (buttons.start) {
+            buttons.start.addEventListener("click", startGame);
+        }
 
-        buttons.closeModal.addEventListener("click", () => {
-            panels.shareModal.classList.add("hidden");
-        });
+        if (buttons.confirm) {
+            buttons.confirm.addEventListener("click", confirmGuess);
+        }
+
+        if (buttons.next) {
+            buttons.next.addEventListener("click", nextRound);
+        }
+
+        if (buttons.finishEarly) {
+            buttons.finishEarly.addEventListener("click", handleFinishEarly);
+        }
+
+        if (buttons.playAgain) {
+            buttons.playAgain.addEventListener("click", startGame);
+        }
+
+        if (buttons.share) {
+            buttons.share.addEventListener("click", shareResults);
+        }
+
+        if (buttons.closeModal) {
+            buttons.closeModal.addEventListener("click", () => {
+                if (panels.shareModal) {
+                    panels.shareModal.classList.add("hidden");
+                }
+            });
+        }
 
         if (buttons.submitScore) {
             buttons.submitScore.addEventListener("click", showSubmitModal);
@@ -1022,7 +1163,9 @@ $arcgis
 
         if (buttons.closeSubmitModal) {
             buttons.closeSubmitModal.addEventListener("click", () => {
-                panels.submitModal.classList.add("hidden");
+                if (panels.submitModal) {
+                    panels.submitModal.classList.add("hidden");
+                }
 
                 if ($("survey-iframe")) {
                     $("survey-iframe").src = "";
@@ -1032,7 +1175,9 @@ $arcgis
 
         if (buttons.closeLeaderboardModal) {
             buttons.closeLeaderboardModal.addEventListener("click", () => {
-                panels.leaderboardModal.classList.add("hidden");
+                if (panels.leaderboardModal) {
+                    panels.leaderboardModal.classList.add("hidden");
+                }
             });
         }
 
