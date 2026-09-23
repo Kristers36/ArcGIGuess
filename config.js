@@ -5,17 +5,15 @@
  * ========================================================================== */
 
 window.ARCGIGUESS_CONFIG = {
-
     /* -------------------------------------------------------------------------
      * 1. BRANDING
      * ---------------------------------------------------------------------- */
 
-    appName: "Pazudusī Latvija: Atrodi vietu kartēs",
+    appName: "Pazudusī Latvija: Atrodi vietu kartē",
 
     tagline: "Pārbaudi savas zināšanas",
 
     shareCardFooter: null,
-
 
     /* -------------------------------------------------------------------------
      * 2. THE MAP & LANDMARK DATA
@@ -30,11 +28,10 @@ window.ARCGIGUESS_CONFIG = {
     // Slāņa nosaukums Web Map
     landmarkLayerTitle: "Vietas",
 
-    // SVARĪGI:
-    // Tavā slānī lauks ir OBJECTID, nevis FID.
-    landmarkIdField: "OBJECTID",
+    // Tavā slānī ID lauks ir FID
+    landmarkIdField: "FID",
 
-    // Foto URL atrodas laukā Photo.
+    // Foto URL atrodas laukā Photo
     landmarkPhotoField: "Photo",
 
     // null = izmantot visas vietas
@@ -45,7 +42,6 @@ window.ARCGIGUESS_CONFIG = {
 
     // Atļaut pabeigt spēli ātrāk
     allowFinishEarly: true,
-
 
     /* -------------------------------------------------------------------------
      * 3. SCORING
@@ -65,7 +61,6 @@ window.ARCGIGUESS_CONFIG = {
         minScore: 0,
     },
 
-
     /* -------------------------------------------------------------------------
      * 4. LANGUAGES
      * ---------------------------------------------------------------------- */
@@ -82,7 +77,6 @@ window.ARCGIGUESS_CONFIG = {
             surveyLang: null,
 
             strings: {
-
                 /* START SCREEN */
 
                 welcomeTitle:
@@ -92,17 +86,15 @@ window.ARCGIGUESS_CONFIG = {
                     "Atrodi vietu. Atceries vēsturi. Pārbaudi sevi! Mēs parādīsim vēsturiskas vietas nosaukumu un attēlu. Vai vari to atrast kartē?<br><br>{scoringSummary}",
 
                 scoringSummaryTemplate:
-                    "Atrodi vietu (vai nokļūsti {bucket} m attālumā): <strong>+{points} punkti</strong><br><strong>-{penalty} punkts</strong> par katriem {bucket} m no pareizās vietas, līdz pat {min} punktiem.",
+                    "Atrodi vietu vai nokļūsti {bucket} m attālumā: <strong>+{points} punkti</strong><br><strong>-{penalty} punkts</strong> par katriem {bucket} m no pareizās vietas, līdz pat {min} punktiem.",
 
                 startButton:
                     "Sākt spēli",
-
 
                 /* LOADING */
 
                 loadingText:
                     "Vietu ielādēšana...",
-
 
                 /* GAME */
 
@@ -113,11 +105,10 @@ window.ARCGIGUESS_CONFIG = {
                     "Punkti: {score}",
 
                 roundDisplay:
-                    "Spēles kārta {current} / {total}",
+                    "Kārta {current} no {total}",
 
                 confirmButton:
                     "Apstiprināt minējumu",
-
 
                 /* ROUND RESULT */
 
@@ -145,7 +136,6 @@ window.ARCGIGUESS_CONFIG = {
                 gameOverButton:
                     "Rezultāti",
 
-
                 /* GAME OVER */
 
                 gameOverTitle:
@@ -169,7 +159,6 @@ window.ARCGIGUESS_CONFIG = {
                 shareButton:
                     "Dalīties ar rezultātiem",
 
-
                 /* SHARING */
 
                 shareText:
@@ -190,7 +179,6 @@ window.ARCGIGUESS_CONFIG = {
                 shareModalDesc:
                     "Ar labo peles pogu noklikšķini uz attēla vai turi to nospiestu, lai to saglabātu un kopīgotu.",
 
-
                 /* ERRORS */
 
                 webMapError:
@@ -198,7 +186,6 @@ window.ARCGIGUESS_CONFIG = {
 
                 layerError:
                     "Tīmekļa kartē neizdevās atrast slāni “Vietas”. Pārbaudi slāņa nosaukumu config.js failā.",
-
 
                 /* LEADERBOARD */
 
@@ -215,7 +202,7 @@ window.ARCGIGUESS_CONFIG = {
                     "Labākie spēlētāji",
 
                 leaderboardLoadingText:
-                    "Ielādē rezultātu tabulu...",
+                    "Notiek rezultātu tabulas ielāde...",
 
                 leaderboardError:
                     "Neizdevās ielādēt labāko rezultātu datus. Lūdzu, mēģini vēlreiz vēlāk.",
@@ -229,13 +216,11 @@ window.ARCGIGUESS_CONFIG = {
         },
     ],
 
-
     /* -------------------------------------------------------------------------
      * 5. SOCIAL SHARING
      * ---------------------------------------------------------------------- */
 
     social: {
-
         title:
             "Pazudusī Latvija: Atrodi vietu kartē",
 
@@ -252,14 +237,11 @@ window.ARCGIGUESS_CONFIG = {
             "",
     },
 
-
     /* -------------------------------------------------------------------------
      * 6. LEADERBOARD
      * ---------------------------------------------------------------------- */
 
     leaderboard: {
-
-        // Šobrīd izslēgts
         enabled: false,
 
         survey123Url:
