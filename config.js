@@ -32,7 +32,7 @@ window.ARCGIGUESS_CONFIG = {
 
     // SVARĪGI:
     // Tavā slānī lauks ir OBJECTID, nevis FID.
-    landmarkIdField: "FID",
+    landmarkIdField: "OBJECTID",
 
     // Foto URL atrodas laukā Photo.
     landmarkPhotoField: "Photo",
