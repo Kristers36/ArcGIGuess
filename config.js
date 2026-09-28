@@ -248,7 +248,7 @@ window.ARCGIGUESS_CONFIG = {
             "https://survey123.arcgis.com/share/ca86560c30ff4566a52adfd45b829fd0?portalUrl=https://envirotech.maps.arcgis.com",
 
         submitScoreFieldId:
-            "field: score",
+            "field:score",
 
         dataApiUrl:
             "https://services1.arcgis.com/zu8dBGfmKCvrZHh2/arcgis/rest/services/survey123_c4317eb262934df4b2fe38cb42a3d1d1_results/FeatureServer/0/query",
