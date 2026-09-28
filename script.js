@@ -197,15 +197,8 @@ $arcgis
              * BASEMAP 
              * ================================================================= */ 
  
-            /* 
-             * Zoom zem 11: 
-             * OpenStreetMap 
-             * 
-             * Zoom 11 un vairāk: 
-             * ArcGIS Online World Imagery 
-             */ 
- 
-            const IMAGERY_ZOOM = 17; 
+       
+            const IMAGERY_ZOOM = 15; 
  
             let currentBasemapType = 
                 null; 
