@@ -205,7 +205,7 @@ $arcgis
              * ArcGIS Online World Imagery
              */
 
-            const IMAGERY_ZOOM = 11;
+            const IMAGERY_ZOOM = 17;
 
             let currentBasemapType =
                 null;
@@ -222,21 +222,6 @@ $arcgis
                 console.log(
                     "Creating basemaps..."
                 );
-
-                /*
-                 * SVARĪGI:
-                 *
-                 * Šeit vairs NETIEK izmantots:
-                 *
-                 * new TileLayer(...)
-                 *
-                 * jo tieši tas iepriekš izraisīja:
-                 *
-                 * TileLayer #load() Failed to load layer
-                 *
-                 * Tā vietā izmantojam ArcGIS Online
-                 * oficiālos Basemap ID.
-                 */
 
                 console.log(
                     "Using ArcGIS Online basemap IDs."
