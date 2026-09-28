@@ -2,7 +2,7 @@
  * ArcGIGuess — Main Script
  * =============================================================================
  * Pazudusī Latvija — Atrodi vietu kartē
- * ============================================================================= */
+ * ========================================================================== */
 
 $arcgis.import([
     "@arcgis/core/config.js",
@@ -39,7 +39,7 @@ $arcgis.import([
             lang.strings || {};
 
         /* =========================================================================
-         * DOM ELEMENTS
+         * DOM
          * ========================================================================= */
 
         const mapEl =
@@ -176,13 +176,15 @@ $arcgis.import([
          * ========================================================================= */
 
         /*
-         * Zoom < 17:
+         * Zoom < 17
+         *      ↓
          * OpenStreetMap
          *
-         * Zoom >= 17:
-         * ArcGIS Online World Imagery + labels / streets
+         * Zoom >= 17
+         *      ↓
+         * World Imagery + reference information
          *
-         * "hybrid" = satellite imagery + reference information.
+         * "hybrid" = satellite imagery + labels / roads / places
          */
 
         const IMAGERY_ZOOM = 17;
@@ -192,7 +194,7 @@ $arcgis.import([
         let basemapSwitchingReady = false;
 
         /* =========================================================================
-         * PIN SETTINGS
+         * PIN
          * ========================================================================= */
 
         const PIN_URL =
@@ -234,7 +236,7 @@ $arcgis.import([
         }
 
         /* =========================================================================
-         * SCORING
+         * SCORING SUMMARY
          * ========================================================================= */
 
         function buildScoringSummary() {
@@ -260,6 +262,10 @@ $arcgis.import([
                 }
             );
         }
+
+        /* =========================================================================
+         * SCORE CALCULATION
+         * ========================================================================= */
 
         function calculateScore(
             distance
@@ -289,8 +295,7 @@ $arcgis.import([
                 );
 
             if (
-                distance <=
-                bucketMeters
+                distance <= bucketMeters
             ) {
 
                 return pointsForHit;
@@ -330,7 +335,7 @@ $arcgis.import([
         }
 
         /* =========================================================================
-         * BASEMAP — OPENSTREETMAP
+         * OPENSTREETMAP BASEMAP
          * ========================================================================= */
 
         async function setOpenStreetMap() {
@@ -346,9 +351,7 @@ $arcgis.import([
             try {
 
                 const basemap =
-                    Basemap.fromId(
-                        "osm"
-                    );
+                    Basemap.fromId("osm");
 
                 if (!basemap) {
 
@@ -358,6 +361,8 @@ $arcgis.import([
 
                     return;
                 }
+
+                await basemap.load();
 
                 mapEl.map.basemap =
                     basemap;
@@ -379,10 +384,10 @@ $arcgis.import([
         }
 
         /* =========================================================================
-         * BASEMAP — SATELLITE + INFORMATION
+         * HYBRID BASEMAP
          * ========================================================================= */
 
-        async function setWorldImagery() {
+        async function setHybridBasemap() {
 
             if (
                 !mapEl ||
@@ -395,21 +400,13 @@ $arcgis.import([
             try {
 
                 /*
-                 * "hybrid" = World Imagery +
-                 * Hybrid Reference Layer.
-                 *
-                 * Tas nozīmē:
-                 * - satelītattēls
-                 * - ielu nosaukumi
-                 * - vietu nosaukumi
-                 * - administratīvā informācija
-                 * - cita reference informācija
+                 * Hybrid =
+                 * World Imagery +
+                 * reference information.
                  */
 
                 const basemap =
-                    Basemap.fromId(
-                        "hybrid"
-                    );
+                    Basemap.fromId("hybrid");
 
                 if (!basemap) {
 
@@ -420,6 +417,8 @@ $arcgis.import([
                     return;
                 }
 
+                await basemap.load();
+
                 mapEl.map.basemap =
                     basemap;
 
@@ -427,7 +426,7 @@ $arcgis.import([
                     "hybrid";
 
                 console.log(
-                    "BASEMAP → Satellite + labels"
+                    "BASEMAP → Satellite + information"
                 );
 
             } catch (error) {
@@ -453,16 +452,19 @@ $arcgis.import([
             }
 
             if (
-                typeof zoom !==
-                "number"
+                typeof zoom !== "number"
             ) {
 
                 return;
             }
 
+            /*
+             * Tuvāk:
+             * Hybrid / Satellite + labels
+             */
+
             if (
-                zoom >=
-                IMAGERY_ZOOM
+                zoom >= IMAGERY_ZOOM
             ) {
 
                 if (
@@ -470,35 +472,36 @@ $arcgis.import([
                     "hybrid"
                 ) {
 
-                    await setWorldImagery();
+                    await setHybridBasemap();
                 }
-
-            } else {
-
-                if (
-                    currentBasemapType !==
-                    "osm"
-                ) {
-
-                    await setOpenStreetMap();
-                }
-            }
-        }
-
-        async function setupBasemapSwitching() {
-
-            if (
-                !mapEl ||
-                !mapEl.map
-            ) {
 
                 return;
             }
 
+            /*
+             * Tālāk:
+             * OSM
+             */
+
+            if (
+                currentBasemapType !==
+                "osm"
+            ) {
+
+                await setOpenStreetMap();
+            }
+        }
+
+        /* =========================================================================
+         * SETUP BASEMAP SWITCHING
+         * ========================================================================= */
+
+        async function setupBasemapSwitching() {
+
             try {
 
                 /*
-                 * Sākumā izmantojam OSM.
+                 * Sākumā OSM.
                  */
 
                 await setOpenStreetMap();
@@ -510,19 +513,17 @@ $arcgis.import([
 
                 if (!view) {
 
-                    console.error(
+                    throw new Error(
                         "MapView was not found."
                     );
-
-                    return;
                 }
 
                 basemapSwitchingReady =
                     true;
 
                 /*
-                 * Iestata pareizo karti
-                 * atbilstoši pašreizējam zoom.
+                 * Iestata pareizo basemap
+                 * pēc pašreizējā zoom.
                  */
 
                 await updateBasemapForZoom(
@@ -530,8 +531,7 @@ $arcgis.import([
                 );
 
                 /*
-                 * Maina karti, kad lietotājs
-                 * pietuvina vai attālina.
+                 * Automātiska pārslēgšana.
                  */
 
                 view.watch(
@@ -541,7 +541,6 @@ $arcgis.import([
                         await updateBasemapForZoom(
                             zoom
                         );
-
                     }
                 );
 
@@ -559,7 +558,7 @@ $arcgis.import([
         }
 
         /* =========================================================================
-         * SYMBOLS
+         * PIN SYMBOL
          * ========================================================================= */
 
         function getPinSymbol() {
@@ -577,19 +576,13 @@ $arcgis.import([
                     `${PIN_HEIGHT}px`,
 
                 yoffset:
-                    `${PIN_HEIGHT / 2}px`,
-
-                outline: {
-                    color: [
-                        255,
-                        255,
-                        255,
-                        0
-                    ],
-                    width: 0
-                }
+                    `${PIN_HEIGHT / 2}px`
             };
         }
+
+        /* =========================================================================
+         * RESULT SYMBOL
+         * ========================================================================= */
 
         function getResultSymbol(
             correct
@@ -624,7 +617,6 @@ $arcgis.import([
                         width: 2
                     }
                 };
-
             }
 
             return {
@@ -676,9 +668,6 @@ $arcgis.import([
 
             if (roundEl) {
 
-                const total =
-                    landmarkPool.length;
-
                 roundEl.textContent =
                     t(
                         "roundDisplay",
@@ -687,7 +676,7 @@ $arcgis.import([
                                 currentRoundIndex + 1,
 
                             total:
-                                total
+                                landmarkPool.length
                         }
                     );
             }
@@ -701,7 +690,7 @@ $arcgis.import([
                 welcomePanel,
                 gamePanel,
                 resultPanel,
-                gameOverPanel,
+                gameOverPanel
             ].forEach(
                 (element) => {
 
@@ -735,7 +724,6 @@ $arcgis.import([
 
             return (
                 feature.attributes?.[field] ||
-                feature.attributes?.Name ||
                 "Nezināma vieta"
             );
         }
@@ -747,20 +735,6 @@ $arcgis.import([
             if (!feature) {
 
                 return "";
-            }
-
-            /*
-             * Ja iepriekš jau saglabāts imageUrl,
-             * izmanto to.
-             */
-
-            if (
-                feature.attributes?.imageUrl
-            ) {
-
-                return (
-                    feature.attributes.imageUrl
-                );
             }
 
             const photoField =
@@ -778,8 +752,10 @@ $arcgis.import([
             feature
         ) {
 
-            return feature?.geometry ||
-                null;
+            return (
+                feature?.geometry ||
+                null
+            );
         }
 
         /* =========================================================================
@@ -809,8 +785,7 @@ $arcgis.import([
                 [
                     result[i],
                     result[j]
-                ] =
-                [
+                ] = [
                     result[j],
                     result[i]
                 ];
@@ -820,7 +795,7 @@ $arcgis.import([
         }
 
         /* =========================================================================
-         * LOAD GAME DATA
+         * LOAD LANDMARK DATA
          * ========================================================================= */
 
         async function loadGameData() {
@@ -828,7 +803,49 @@ $arcgis.import([
             if (!landmarksLayer) {
 
                 throw new Error(
-                    "Landmarks layer was not found."
+                    "Landmark layer nav atrasts."
+                );
+            }
+
+            console.log(
+                "===================================="
+            );
+
+            console.log(
+                "LANDMARK DATA"
+            );
+
+            console.log(
+                "Layer:",
+                landmarksLayer.title
+            );
+
+            console.log(
+                "Layer type:",
+                landmarksLayer.type
+            );
+
+            console.log(
+                "===================================="
+            );
+
+            /*
+             * Ielādējam pašu slāni.
+             */
+
+            await landmarksLayer.load();
+
+            /*
+             * Pārbaudām, vai slānis var veikt query.
+             */
+
+            if (
+                typeof landmarksLayer.queryFeatures !==
+                "function"
+            ) {
+
+                throw new Error(
+                    `Slānis "${landmarksLayer.title}" neatbalsta queryFeatures().`
                 );
             }
 
@@ -844,43 +861,98 @@ $arcgis.import([
             query.returnGeometry =
                 true;
 
+            console.log(
+                "Querying landmark features..."
+            );
+
+            /*
+             * Pieprasām visus objektus.
+             */
+
             const result =
                 await landmarksLayer.queryFeatures(
                     query
                 );
 
+            console.log(
+                "Query completed."
+            );
+
+            console.log(
+                "Returned features:",
+                result?.features?.length
+            );
+
             if (
                 !result ||
-                !result.features
+                !Array.isArray(
+                    result.features
+                )
             ) {
 
                 throw new Error(
-                    "No landmark features returned."
+                    "Slānis neatgrieza FeatureSet."
                 );
             }
+
+            /*
+             * Saglabājam tikai objektus,
+             * kuriem ir ģeometrija.
+             */
 
             const features =
                 result.features.filter(
                     (feature) =>
-                        !!feature.geometry
+                        feature.geometry
                 );
 
+            console.log(
+                "Features with geometry:",
+                features.length
+            );
+
+            if (
+                features.length === 0
+            ) {
+
+                throw new Error(
+                    "Slānī nav neviena objekta ar ģeometriju."
+                );
+            }
+
             /*
-             * Izmanto config.js norādīto Photo lauku.
+             * Foto.
              */
+
+            const photoField =
+                CONFIG.landmarkPhotoField ||
+                "Photo";
+
+            console.log(
+                "Photo field:",
+                photoField
+            );
 
             features.forEach(
                 (feature) => {
 
                     feature.attributes.imageUrl =
-                        getLandmarkPhoto(
-                            feature
-                        );
+                        feature.attributes[
+                            photoField
+                        ] || "";
                 }
             );
 
+            /*
+             * Saglabājam visas vietas.
+             */
+
             allLandmarks =
                 features;
+
+            /*
+             * Sajaucam vietas.
+             */
 
             if (
                 CONFIG.shuffleLandmarks !== false
@@ -894,12 +966,13 @@ $arcgis.import([
             } else {
 
                 landmarkPool =
-                    [...allLandmarks];
+                    [
+                        ...allLandmarks
+                    ];
             }
 
             /*
-             * Ja roundsPerGame ir norādīts,
-             * ierobežo spēles kārtu skaitu.
+             * Kārtu skaits.
              */
 
             const rounds =
@@ -920,7 +993,7 @@ $arcgis.import([
             }
 
             console.log(
-                "Loaded landmarks:",
+                "Final landmark pool:",
                 landmarkPool.length
             );
         }
@@ -945,12 +1018,22 @@ $arcgis.import([
             gameStarted =
                 true;
 
-            landmarkPool =
-                CONFIG.shuffleLandmarks === false
-                    ? [...allLandmarks]
-                    : shuffleArray(
+            if (
+                CONFIG.shuffleLandmarks !== false
+            ) {
+
+                landmarkPool =
+                    shuffleArray(
                         allLandmarks
                     );
+
+            } else {
+
+                landmarkPool =
+                    [
+                        ...allLandmarks
+                    ];
+            }
 
             const rounds =
                 Number(
@@ -1002,31 +1085,15 @@ $arcgis.import([
                 currentResultGraphic
             ) {
 
-                try {
-
-                    mapEl.graphics.remove(
-                        currentResultGraphic
-                    );
-
-                } catch (
-                    error
-                ) {
-
-                    console.warn(
-                        error
-                    );
-                }
+                mapEl.graphics.remove(
+                    currentResultGraphic
+                );
 
                 currentResultGraphic =
                     null;
             }
 
-            if (
-                mapEl.graphics
-            ) {
-
-                mapEl.graphics.removeAll();
-            }
+            mapEl.graphics.removeAll();
 
             const name =
                 getLandmarkName(
@@ -1056,10 +1123,6 @@ $arcgis.import([
 
                 } else {
 
-                    landmarkImageEl.removeAttribute(
-                        "src"
-                    );
-
                     landmarkImageEl.hidden =
                         true;
                 }
@@ -1078,35 +1141,33 @@ $arcgis.import([
             );
 
             /*
-             * Atgriež karti uz spēles sākuma
-             * skatījumu, bet nemaina basemap.
+             * Pārvietojam karti uz Latvijas
+             * sākuma skatījumu.
+             *
+             * Šeit NEiestatām basemap.
              */
 
             try {
 
-                if (
-                    currentLandmark.geometry
-                ) {
+                await mapEl.goTo(
+                    {
+                        center:
+                            [
+                                24.6032,
+                                56.8796
+                            ],
 
-                    await mapEl.goTo(
-                        {
-                            center:
-                                currentLandmark.geometry,
-                            zoom: 10
-                        },
-                        {
-                            duration:
-                                700
-                        }
-                    );
-                }
+                        zoom: 7
+                    },
+                    {
+                        duration: 700
+                    }
+                );
 
-            } catch (
-                error
-            ) {
+            } catch (error) {
 
                 console.warn(
-                    "Could not move map to round starting position.",
+                    "Could not move map:",
                     error
                 );
             }
@@ -1189,9 +1250,7 @@ $arcgis.import([
                     currentLandmark
                 );
 
-            if (
-                !targetGeometry
-            ) {
+            if (!targetGeometry) {
 
                 return;
             }
@@ -1209,9 +1268,7 @@ $arcgis.import([
                         }
                     );
 
-            } catch (
-                error
-            ) {
+            } catch (error) {
 
                 console.error(
                     "Distance calculation failed:",
@@ -1247,15 +1304,6 @@ $arcgis.import([
                     distance
                 );
 
-            if (
-                currentResultGraphic
-            ) {
-
-                mapEl.graphics.remove(
-                    currentResultGraphic
-                );
-            }
-
             currentResultGraphic =
                 new Graphic(
                     {
@@ -1277,12 +1325,8 @@ $arcgis.import([
 
                 resultTitleEl.innerHTML =
                     correct
-                        ? t(
-                            "correctTitle"
-                        )
-                        : t(
-                            "incorrectTitle"
-                        );
+                        ? t("correctTitle")
+                        : t("incorrectTitle");
             }
 
             if (resultMessageEl) {
@@ -1329,7 +1373,7 @@ $arcgis.import([
             );
 
             /*
-             * Parāda pareizo lokāciju.
+             * Pietuvojamies pareizajai vietai.
              */
 
             try {
@@ -1338,7 +1382,9 @@ $arcgis.import([
                     {
                         target:
                             targetGeometry,
-                        zoom: 17
+
+                        zoom:
+                            IMAGERY_ZOOM
                     },
                     {
                         duration:
@@ -1346,9 +1392,7 @@ $arcgis.import([
                     }
                 );
 
-            } catch (
-                error
-            ) {
+            } catch (error) {
 
                 console.warn(
                     "Could not zoom to correct location:",
@@ -1452,8 +1496,7 @@ $arcgis.import([
                     ? (
                         foundCount /
                         total
-                    ) *
-                    100
+                    ) * 100
                     : 0;
 
             if (finalScoreEl) {
@@ -1482,12 +1525,12 @@ $arcgis.import([
         }
 
         /* =========================================================================
-         * SHARE RESULTS
+         * SHARE
          * ========================================================================= */
 
         async function shareResults() {
 
-            const shareConfig =
+            const social =
                 CONFIG.social || {};
 
             const appName =
@@ -1495,7 +1538,7 @@ $arcgis.import([
                 "ArcGIGuess";
 
             const url =
-                shareConfig.url ||
+                social.url ||
                 window.location.href;
 
             const shareText =
@@ -1513,11 +1556,6 @@ $arcgis.import([
                     }
                 );
 
-            /*
-             * Ja pārlūks atbalsta Web Share API,
-             * izmanto to.
-             */
-
             if (
                 navigator.share
             ) {
@@ -1527,7 +1565,7 @@ $arcgis.import([
                     await navigator.share(
                         {
                             title:
-                                shareConfig.title ||
+                                social.title ||
                                 appName,
 
                             text:
@@ -1540,26 +1578,14 @@ $arcgis.import([
 
                     return;
 
-                } catch (
-                    error
-                ) {
-
-                    /*
-                     * Lietotājs varēja aizvērt
-                     * share logu.
-                     */
+                } catch (error) {
 
                     console.log(
-                        "Share cancelled or failed.",
+                        "Share cancelled.",
                         error
                     );
                 }
             }
-
-            /*
-             * Ja Web Share nav pieejams,
-             * mēģina nokopēt tekstu.
-             */
 
             try {
 
@@ -1571,14 +1597,7 @@ $arcgis.import([
                     "Rezultāta teksts ir nokopēts!"
                 );
 
-            } catch (
-                error
-            ) {
-
-                console.error(
-                    "Could not copy share text:",
-                    error
-                );
+            } catch (error) {
 
                 alert(
                     shareText
@@ -1611,30 +1630,20 @@ $arcgis.import([
                 return;
             }
 
-            /*
-             * SVARĪGI:
-             *
-             * config.js:
-             * submitScoreFieldId: "field:score"
-             *
-             * Nevis:
-             * "field: score"
-             */
-
             const fieldId =
                 LEADERBOARD.submitScoreFieldId ||
                 "field:score";
 
             const separator =
-                LEADERBOARD.survey123Url.includes(
-                    "?"
-                )
+                LEADERBOARD.survey123Url.includes("?")
                     ? "&"
                     : "?";
 
             let url =
-                `${LEADERBOARD.survey123Url}${separator}` +
-                `${fieldId}=${encodeURIComponent(
+                `${LEADERBOARD.survey123Url}` +
+                `${separator}` +
+                `${fieldId}` +
+                `=${encodeURIComponent(
                     totalScore
                 )}`;
 
@@ -1673,6 +1682,18 @@ $arcgis.import([
                 );
             }
 
+            const firstNameField =
+                LEADERBOARD.firstNameField ||
+                "first_name";
+
+            const lastNameField =
+                LEADERBOARD.lastNameField ||
+                "last_name";
+
+            const scoreField =
+                LEADERBOARD.scoreField ||
+                "score";
+
             const params = {
 
                 f: "json",
@@ -1681,21 +1702,13 @@ $arcgis.import([
 
                 outFields:
                     [
-                        LEADERBOARD.firstNameField ||
-                            "first_name",
-
-                        LEADERBOARD.lastNameField ||
-                            "last_name",
-
-                        LEADERBOARD.scoreField ||
-                            "score"
+                        firstNameField,
+                        lastNameField,
+                        scoreField
                     ].join(","),
 
                 orderByFields:
-                    `${
-                        LEADERBOARD.scoreField ||
-                        "score"
-                    } DESC`,
+                    `${scoreField} DESC`,
 
                 resultRecordCount:
                     LEADERBOARD.topN ||
@@ -1751,12 +1764,10 @@ $arcgis.import([
                     );
 
                 cell.colSpan =
-                    4;
+                    3;
 
                 cell.textContent =
-                    t(
-                        "noScores"
-                    );
+                    t("noScores");
 
                 row.appendChild(
                     cell
@@ -1833,8 +1844,7 @@ $arcgis.import([
                     score.textContent =
                         attributes[
                             scoreField
-                        ] ??
-                        0;
+                        ] ?? 0;
 
                     row.appendChild(
                         rank
@@ -1857,9 +1867,7 @@ $arcgis.import([
 
         async function showLeaderboard() {
 
-            if (
-                !leaderboardModal
-            ) {
+            if (!leaderboardModal) {
 
                 return;
             }
@@ -1871,7 +1879,7 @@ $arcgis.import([
 
                 leaderboardBody.innerHTML =
                     `<tr>
-                        <td colspan="4">
+                        <td colspan="3">
                             ${t(
                                 "leaderboardLoadingText"
                             )}
@@ -1888,9 +1896,7 @@ $arcgis.import([
                     features
                 );
 
-            } catch (
-                error
-            ) {
+            } catch (error) {
 
                 console.error(
                     "Leaderboard error:",
@@ -1903,7 +1909,7 @@ $arcgis.import([
 
                     leaderboardBody.innerHTML =
                         `<tr>
-                            <td colspan="4">
+                            <td colspan="3">
                                 ${t(
                                     "leaderboardError"
                                 )}
@@ -1914,7 +1920,7 @@ $arcgis.import([
         }
 
         /* =========================================================================
-         * CLOSE MODALS
+         * MODALS
          * ========================================================================= */
 
         function closeModal(
@@ -1934,11 +1940,6 @@ $arcgis.import([
 
         function toggleLanguage() {
 
-            /*
-             * Šobrīd config.js satur tikai LV,
-             * tāpēc šeit nav ko pārslēgt.
-             */
-
             console.log(
                 "Only Latvian language is configured."
             );
@@ -1954,135 +1955,96 @@ $arcgis.import([
                 CONFIG.appName ||
                 document.title;
 
-            const appNameElements =
-                document.querySelectorAll(
+            document
+                .querySelectorAll(
                     "[data-config='appName']"
+                )
+                .forEach(
+                    (element) => {
+
+                        element.textContent =
+                            CONFIG.appName ||
+                            "";
+                    }
                 );
 
-            appNameElements.forEach(
-                (element) => {
-
-                    element.textContent =
-                        CONFIG.appName ||
-                        "";
-                }
-            );
-
-            const taglineElements =
-                document.querySelectorAll(
+            document
+                .querySelectorAll(
                     "[data-config='tagline']"
+                )
+                .forEach(
+                    (element) => {
+
+                        element.textContent =
+                            CONFIG.tagline ||
+                            "";
+                    }
                 );
 
-            taglineElements.forEach(
-                (element) => {
-
-                    element.textContent =
-                        CONFIG.tagline ||
-                        "";
-                }
-            );
-
-            const scoringElements =
-                document.querySelectorAll(
+            document
+                .querySelectorAll(
                     "[data-scoring-summary]"
+                )
+                .forEach(
+                    (element) => {
+
+                        element.innerHTML =
+                            buildScoringSummary();
+                    }
                 );
 
-            scoringElements.forEach(
-                (element) => {
-
-                    element.innerHTML =
-                        buildScoringSummary();
-                }
-            );
-
-            if (
-                startButton
-            ) {
+            if (startButton) {
 
                 startButton.textContent =
-                    t(
-                        "startButton"
-                    );
+                    t("startButton");
             }
 
-            if (
-                confirmButton
-            ) {
+            if (confirmButton) {
 
                 confirmButton.textContent =
-                    t(
-                        "confirmButton"
-                    );
+                    t("confirmButton");
             }
 
-            if (
-                nextButton
-            ) {
+            if (nextButton) {
 
                 nextButton.textContent =
-                    t(
-                        "nextButton"
-                    );
+                    t("nextButton");
             }
 
-            if (
-                finishEarlyButton
-            ) {
+            if (finishEarlyButton) {
 
                 finishEarlyButton.textContent =
-                    t(
-                        "finishEarlyButton"
-                    );
+                    t("finishEarlyButton");
             }
 
-            if (
-                gameOverButton
-            ) {
+            if (gameOverButton) {
 
                 gameOverButton.textContent =
-                    t(
-                        "gameOverButton"
-                    );
+                    t("gameOverButton");
             }
 
-            if (
-                playAgainButton
-            ) {
+            if (playAgainButton) {
 
                 playAgainButton.textContent =
-                    t(
-                        "playAgainButton"
-                    );
+                    t("playAgainButton");
             }
 
-            if (
-                shareButton
-            ) {
+            if (shareButton) {
 
                 shareButton.textContent =
-                    t(
-                        "shareButton"
-                    );
+                    t("shareButton");
             }
 
-            if (
-                submitScoreButton
-            ) {
+            if (submitScoreButton) {
 
                 submitScoreButton.textContent =
-                    t(
-                        "submitScoreButton"
-                    );
+                    t("submitScoreButton");
             }
 
-            if (
-                viewLeaderboardButton
-            ) {
+            if (viewLeaderboardButton) {
 
                 viewLeaderboardButton.textContent =
-                    t(
-                        "viewLeaderboardButton"
-                    );
+                    t("viewLeaderboardButton");
             }
         }
 
@@ -2095,12 +2057,30 @@ $arcgis.import([
             try {
 
                 console.log(
+                    "===================================="
+                );
+
+                console.log(
                     "ArcGIGuess starting..."
                 );
 
-                /*
-                 * ArcGIS Portal URL
-                 */
+                console.log(
+                    "WebMap ID:",
+                    CONFIG.webMapItemId
+                );
+
+                console.log(
+                    "Landmark layer:",
+                    CONFIG.landmarkLayerTitle
+                );
+
+                console.log(
+                    "===================================="
+                );
+
+                /* ================================================================
+                 * PORTAL
+                 * ================================================================ */
 
                 if (
                     CONFIG.portalUrl
@@ -2110,16 +2090,16 @@ $arcgis.import([
                         CONFIG.portalUrl;
                 }
 
-                /*
-                 * WebMap
-                 */
+                /* ================================================================
+                 * WEBMAP
+                 * ================================================================ */
 
                 if (
                     !CONFIG.webMapItemId
                 ) {
 
                     throw new Error(
-                        "webMapItemId is missing in config.js"
+                        "webMapItemId nav norādīts config.js."
                     );
                 }
 
@@ -2137,16 +2117,47 @@ $arcgis.import([
                 mapEl.map =
                     webmap;
 
+                console.log(
+                    "Loading WebMap..."
+                );
+
                 await webmap.load();
 
                 console.log(
-                    "WebMap loaded."
+                    "WebMap loaded successfully."
                 );
 
-                /*
-                 * Atrodam spēles slāni,
-                 * izmantojot config.js.
-                 */
+                /* ================================================================
+                 * LIST LAYERS
+                 * ================================================================ */
+
+                console.log(
+                    "===================================="
+                );
+
+                console.log(
+                    "WEBMAP LAYERS:"
+                );
+
+                webmap.layers.forEach(
+                    (layer) => {
+
+                        console.log(
+                            "Layer:",
+                            layer.title,
+                            "| type:",
+                            layer.type
+                        );
+                    }
+                );
+
+                console.log(
+                    "===================================="
+                );
+
+                /* ================================================================
+                 * FIND LANDMARK LAYER
+                 * ================================================================ */
 
                 const landmarkLayerTitle =
                     CONFIG.landmarkLayerTitle ||
@@ -2159,12 +2170,27 @@ $arcgis.import([
                             landmarkLayerTitle
                     );
 
-                if (
-                    !landmarksLayer
-                ) {
+                if (!landmarksLayer) {
+
+                    console.error(
+                        `Slānis "${landmarkLayerTitle}" netika atrasts.`
+                    );
+
+                    console.error(
+                        "Pieejamie slāņi:"
+                    );
+
+                    webmap.layers.forEach(
+                        (layer) => {
+
+                            console.error(
+                                layer.title
+                            );
+                        }
+                    );
 
                     throw new Error(
-                        `Tīmekļa kartē neizdevās atrast slāni "${landmarkLayerTitle}".`
+                        `Slānis "${landmarkLayerTitle}" netika atrasts WebMap.`
                     );
                 }
 
@@ -2173,17 +2199,16 @@ $arcgis.import([
                     landmarksLayer.title
                 );
 
-                /*
-                 * Slānis tiek paslēpts,
-                 * lai pareizās vietas nebūtu redzamas.
-                 */
+                /* ================================================================
+                 * HIDE LANDMARK LAYER
+                 * ================================================================ */
 
                 landmarksLayer.visible =
                     false;
 
-                /*
-                 * Sagaidām MapView.
-                 */
+                /* ================================================================
+                 * MAP VIEW
+                 * ================================================================ */
 
                 await mapEl.viewOnReady();
 
@@ -2191,22 +2216,29 @@ $arcgis.import([
                     "MapView ready."
                 );
 
-                /*
-                 * Ieslēdz OSM / Hybrid
-                 * automātisko pārslēgšanu.
-                 */
+                /* ================================================================
+                 * BASEMAP
+                 * ================================================================ */
 
                 await setupBasemapSwitching();
 
-                /*
-                 * Ielādē vietas.
-                 */
+                /* ================================================================
+                 * LANDMARK DATA
+                 * ================================================================ */
+
+                console.log(
+                    "Loading landmark data..."
+                );
 
                 await loadGameData();
 
-                /*
-                 * Sākuma UI.
-                 */
+                console.log(
+                    "Landmark data loaded successfully."
+                );
+
+                /* ================================================================
+                 * UI
+                 * ================================================================ */
 
                 applyStaticConfig();
 
@@ -2217,22 +2249,38 @@ $arcgis.import([
                 );
 
                 console.log(
+                    "===================================="
+                );
+
+                console.log(
                     "ArcGIGuess initialized successfully."
                 );
 
-            } catch (
-                error
-            ) {
+                console.log(
+                    "===================================="
+                );
+
+            } catch (error) {
 
                 console.error(
-                    "ArcGIGuess initialization error:",
+                    "===================================="
+                );
+
+                console.error(
+                    "ArcGIGuess initialization error:"
+                );
+
+                console.error(
                     error
                 );
 
+                console.error(
+                    "===================================="
+                );
+
                 alert(
-                    t(
-                        "webMapError"
-                    )
+                    "Neizdevās ielādēt spēles datus.\n\n" +
+                    "Atver F12 → Console, lai redzētu precīzu kļūdu."
                 );
             }
         }
@@ -2241,26 +2289,17 @@ $arcgis.import([
          * EVENTS
          * ========================================================================= */
 
-        if (
-            mapEl
-        ) {
+        mapEl.addEventListener(
+            "arcgisViewClick",
+            (event) => {
 
-            mapEl.addEventListener(
-                "arcgisViewClick",
-                (
+                handleMapClick(
                     event
-                ) => {
+                );
+            }
+        );
 
-                    handleMapClick(
-                        event
-                    );
-                }
-            );
-        }
-
-        if (
-            startButton
-        ) {
+        if (startButton) {
 
             startButton.addEventListener(
                 "click",
@@ -2268,9 +2307,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            confirmButton
-        ) {
+        if (confirmButton) {
 
             confirmButton.addEventListener(
                 "click",
@@ -2278,9 +2315,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            nextButton
-        ) {
+        if (nextButton) {
 
             nextButton.addEventListener(
                 "click",
@@ -2288,9 +2323,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            finishEarlyButton
-        ) {
+        if (finishEarlyButton) {
 
             finishEarlyButton.addEventListener(
                 "click",
@@ -2298,9 +2331,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            gameOverButton
-        ) {
+        if (gameOverButton) {
 
             gameOverButton.addEventListener(
                 "click",
@@ -2308,9 +2339,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            playAgainButton
-        ) {
+        if (playAgainButton) {
 
             playAgainButton.addEventListener(
                 "click",
@@ -2318,9 +2347,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            shareButton
-        ) {
+        if (shareButton) {
 
             shareButton.addEventListener(
                 "click",
@@ -2328,9 +2355,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            submitScoreButton
-        ) {
+        if (submitScoreButton) {
 
             submitScoreButton.addEventListener(
                 "click",
@@ -2338,9 +2363,7 @@ $arcgis.import([
             );
         }
 
-        if (
-            viewLeaderboardButton
-        ) {
+        if (viewLeaderboardButton) {
 
             viewLeaderboardButton.addEventListener(
                 "click",
@@ -2348,19 +2371,13 @@ $arcgis.import([
             );
         }
 
-        if (
-            languageButton
-        ) {
+        if (languageButton) {
 
             languageButton.addEventListener(
                 "click",
                 toggleLanguage
             );
         }
-
-        /*
-         * Aizver Submit modal.
-         */
 
         document
             .querySelectorAll(
@@ -2381,10 +2398,6 @@ $arcgis.import([
                 }
             );
 
-        /*
-         * Aizver leaderboard modal.
-         */
-
         document
             .querySelectorAll(
                 "[data-close-leaderboard-modal]"
@@ -2403,10 +2416,6 @@ $arcgis.import([
                     );
                 }
             );
-
-        /*
-         * Aizver share modal.
-         */
 
         document
             .querySelectorAll(
@@ -2428,7 +2437,7 @@ $arcgis.import([
             );
 
         /* =========================================================================
-         * APPLY CONFIG + START
+         * START
          * ========================================================================= */
 
         applyStaticConfig();
@@ -2450,11 +2459,17 @@ $arcgis.import([
 
         window.arcgisGuess =
             {
+
                 startGame,
+
                 startRound,
+
                 endGame,
+
                 setOpenStreetMap,
-                setWorldImagery,
+
+                setHybridBasemap,
+
                 updateBasemapForZoom
             };
     }
@@ -2465,6 +2480,10 @@ $arcgis.import([
         console.error(
             "Failed to load ArcGIS modules:",
             error
+        );
+
+        alert(
+            "Neizdevās ielādēt ArcGIS komponentes."
         );
     }
 );
