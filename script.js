@@ -1,3421 +1,2470 @@
 /* =============================================================================
- * ArcGIGuess — Game logic
+ * ArcGIGuess — Main Script
  * =============================================================================
  * Pazudusī Latvija — Atrodi vietu kartē
  * ============================================================================= */
 
-$arcgis
-    .import([
-        "@arcgis/core/config.js",
-        "@arcgis/core/WebMap.js",
-        "@arcgis/core/Graphic.js",
-        "@arcgis/core/request.js",
-        "@arcgis/core/geometry/operators/distanceOperator.js",
-        "@arcgis/core/Basemap.js",
-    ])
-    .then(
-        ([
-            esriConfig,
-            WebMap,
-            Graphic,
-            esriRequest,
-            distanceOperator,
-            Basemap,
-        ]) => {
+$arcgis.import([
+    "@arcgis/core/config.js",
+    "@arcgis/core/WebMap.js",
+    "@arcgis/core/Graphic.js",
+    "@arcgis/core/request.js",
+    "@arcgis/core/geometry/operators/distanceOperator.js",
+    "@arcgis/core/Basemap.js",
+])
+.then(
+    async ([
+        esriConfig,
+        WebMap,
+        Graphic,
+        esriRequest,
+        distanceOperator,
+        Basemap,
+    ]) => {
 
-            /* =================================================================
-             * CONFIG
-             * ================================================================= */
+        /* =========================================================================
+         * CONFIG
+         * ========================================================================= */
 
-            const CONFIG =
-                window.ARCGIGUESS_CONFIG || {};
+        const CONFIG =
+            window.ARCGIGUESS_CONFIG || {};
 
-            const LEADERBOARD =
-                CONFIG.leaderboard || {};
+        const LEADERBOARD =
+            CONFIG.leaderboard || {};
 
-            const $ = (id) =>
-                document.getElementById(id);
+        const lang =
+            CONFIG.languages?.[0] || {};
 
-            const mapEl =
-                document.querySelector(
-                    "arcgis-map"
-                );
+        const strings =
+            lang.strings || {};
 
-            /* =================================================================
-             * PANELS
-             * ================================================================= */
+        /* =========================================================================
+         * DOM ELEMENTS
+         * ========================================================================= */
 
-            const panels = {
-                start: $("start-panel"),
-                loading: $("loading-panel"),
-                game: $("game-panel"),
-                roundResult:
-                    $("round-result-panel"),
-                gameOver:
-                    $("game-over-panel"),
-                shareModal:
-                    $("share-modal"),
-                submitModal:
-                    $("submit-modal"),
-                leaderboardModal:
-                    $("leaderboard-modal"),
-                leaderboardLoading:
-                    $("leaderboard-loading"),
-                leaderboardList:
-                    $("leaderboard-list"),
-            };
+        const mapEl =
+            document.querySelector("arcgis-map");
 
-            /* =================================================================
-             * BUTTONS
-             * ================================================================= */
+        if (!mapEl) {
 
-            const buttons = {
-                langToggle:
-                    $("lang-toggle"),
+            console.error(
+                "arcgis-map elements was not found."
+            );
 
-                start:
-                    $("start-button"),
+            return;
+        }
 
-                confirm:
-                    $("confirm-button"),
+        const startButton =
+            document.querySelector("#start-button");
 
-                next:
-                    $("next-button"),
+        const confirmButton =
+            document.querySelector("#confirm-button");
 
-                finishEarly:
-                    $("finish-early-button"),
+        const nextButton =
+            document.querySelector("#next-button");
 
-                playAgain:
-                    $("play-again-button"),
+        const finishEarlyButton =
+            document.querySelector("#finish-early-button");
 
-                share:
-                    $("share-button"),
+        const gameOverButton =
+            document.querySelector("#game-over-button");
 
-                closeModal:
-                    $("close-modal-button"),
+        const playAgainButton =
+            document.querySelector("#play-again-button");
 
-                submitScore:
-                    $("submit-score-button"),
+        const shareButton =
+            document.querySelector("#share-button");
 
-                viewLeaderboard:
-                    $("view-leaderboard-button"),
+        const submitScoreButton =
+            document.querySelector("#submit-score-button");
 
-                closeSubmitModal:
-                    $("close-submit-modal-button"),
+        const viewLeaderboardButton =
+            document.querySelector("#view-leaderboard-button");
 
-                closeLeaderboardModal:
-                    $(
-                        "close-leaderboard-modal-button"
-                    ),
-            };
+        const landmarkNameEl =
+            document.querySelector("#landmark-name");
 
-            /* =================================================================
-             * IMAGES
-             * ================================================================= */
+        const landmarkImageEl =
+            document.querySelector("#landmark-image");
 
-            const imageElements = {
-                container:
-                    $("landmark-image-container"),
+        const scoreEl =
+            document.querySelector("#score");
 
-                image:
-                    $("landmark-image"),
+        const roundEl =
+            document.querySelector("#round");
 
-                spinner:
-                    $("image-spinner"),
-            };
+        const resultTitleEl =
+            document.querySelector("#result-title");
 
-            /* =================================================================
-             * LANGUAGE
-             * ================================================================= */
+        const resultMessageEl =
+            document.querySelector("#result-message");
 
-            const LANGUAGES =
-                CONFIG.languages || [];
+        const finalScoreEl =
+            document.querySelector("#final-score");
 
-            const LANG_BY_CODE = {};
+        const accuracyEl =
+            document.querySelector("#accuracy");
 
-            LANGUAGES.forEach(
-                (lang) => {
-                    LANG_BY_CODE[
-                        lang.code
-                    ] = lang;
+        const foundEl =
+            document.querySelector("#found");
+
+        const welcomePanel =
+            document.querySelector("#welcome-panel");
+
+        const gamePanel =
+            document.querySelector("#game-panel");
+
+        const resultPanel =
+            document.querySelector("#result-panel");
+
+        const gameOverPanel =
+            document.querySelector("#game-over-panel");
+
+        const submitModal =
+            document.querySelector("#submit-modal");
+
+        const leaderboardModal =
+            document.querySelector("#leaderboard-modal");
+
+        const submitFrame =
+            document.querySelector("#submit-frame");
+
+        const leaderboardBody =
+            document.querySelector("#leaderboard-body");
+
+        const shareModal =
+            document.querySelector("#share-modal");
+
+        const shareImage =
+            document.querySelector("#share-image");
+
+        const languageButton =
+            document.querySelector("#language-button");
+
+        /* =========================================================================
+         * GAME STATE
+         * ========================================================================= */
+
+        let webmap = null;
+
+        let landmarksLayer = null;
+
+        let landmarkPool = [];
+
+        let allLandmarks = [];
+
+        let currentLandmark = null;
+
+        let currentGuessGraphic = null;
+
+        let currentResultGraphic = null;
+
+        let currentRoundIndex = 0;
+
+        let totalScore = 0;
+
+        let totalDistance = 0;
+
+        let foundCount = 0;
+
+        let gameStarted = false;
+
+        let finishEarlyConfirm = false;
+
+        /* =========================================================================
+         * BASEMAP SETTINGS
+         * ========================================================================= */
+
+        /*
+         * Zoom < 17:
+         * OpenStreetMap
+         *
+         * Zoom >= 17:
+         * ArcGIS Online World Imagery + labels / streets
+         *
+         * "hybrid" = satellite imagery + reference information.
+         */
+
+        const IMAGERY_ZOOM = 17;
+
+        let currentBasemapType = null;
+
+        let basemapSwitchingReady = false;
+
+        /* =========================================================================
+         * PIN SETTINGS
+         * ========================================================================= */
+
+        const PIN_URL =
+            "./assets/pin.svg";
+
+        const PIN_WIDTH = 28;
+
+        const PIN_HEIGHT = 42;
+
+        /* =========================================================================
+         * TRANSLATION
+         * ========================================================================= */
+
+        function t(
+            key,
+            replacements = {}
+        ) {
+
+            let text =
+                strings[key] ?? key;
+
+            Object.entries(
+                replacements
+            ).forEach(
+                ([key, value]) => {
+
+                    text =
+                        text.replace(
+                            new RegExp(
+                                `\\{${key}\\}`,
+                                "g"
+                            ),
+                            value
+                        );
                 }
             );
 
-            const DEFAULT_LANG =
-                LANGUAGES[0];
+            return text;
+        }
 
-            let currentLanguage =
-                DEFAULT_LANG
-                    ? DEFAULT_LANG.code
-                    : "lv";
+        /* =========================================================================
+         * SCORING
+         * ========================================================================= */
 
-            /* =================================================================
-             * GAME STATE
-             * ================================================================= */
+        function buildScoringSummary() {
 
-            let gameState = "LOADING";
+            return t(
+                "scoringSummaryTemplate",
+                {
+                    bucket:
+                        CONFIG.scoring?.bucketMeters ??
+                        500,
 
-            let landmarkPool = [];
+                    points:
+                        CONFIG.scoring?.pointsForHit ??
+                        10,
 
-            let allLandmarks = [];
+                    penalty:
+                        CONFIG.scoring?.penaltyPerBucket ??
+                        1,
 
-            let currentLandmarkIndex = 0;
+                    min:
+                        CONFIG.scoring?.minScore ??
+                        0,
+                }
+            );
+        }
 
-            let totalScore = 0;
+        function calculateScore(
+            distance
+        ) {
 
-            let accuracyTracker = [];
+            const scoring =
+                CONFIG.scoring || {};
 
-            let clickedPoint = null;
-
-            let webmap = null;
-
-            let landmarksLayer = null;
-
-            let clicksEnabled = false;
-
-            let finishEarlyArmed =
-                false;
-
-            let finishEarlyTimer =
-                null;
-
-            /* =================================================================
-             * PIN
-             * ================================================================= */
-
-            const PIN_IMAGE =
-                "./assets/pin.svg";
-
-            const PIN_WIDTH = 28;
-
-            const PIN_HEIGHT = 42;
-
-            const PIN_REST_YOFFSET =
-                PIN_HEIGHT / 2;
-
-            /* =================================================================
-             * BASEMAP
-             * ================================================================= */
-
-            /*
-             * Zoom zem 11:
-             * OpenStreetMap
-             *
-             * Zoom 11 un vairāk:
-             * ArcGIS Online World Imagery
-             */
-
-            const IMAGERY_ZOOM = 17;
-
-            let currentBasemapType =
-                null;
-
-            let basemapSwitchingReady =
-                false;
-
-            /* =================================================================
-             * BASEMAP HELPERS
-             * ================================================================= */
-
-            function createBasemaps() {
-
-                console.log(
-                    "Creating basemaps..."
+            const pointsForHit =
+                Number(
+                    scoring.pointsForHit ?? 10
                 );
 
-                console.log(
-                    "Using ArcGIS Online basemap IDs."
+            const bucketMeters =
+                Number(
+                    scoring.bucketMeters ?? 500
                 );
-            }
 
-            function setOpenStreetMap() {
+            const penaltyPerBucket =
+                Number(
+                    scoring.penaltyPerBucket ?? 1
+                );
 
-                if (
-                    !mapEl ||
-                    !mapEl.map
-                ) {
-                    return;
-                }
+            const minScore =
+                Number(
+                    scoring.minScore ?? 0
+                );
 
-                try {
-
-                    const basemap =
-                        Basemap.fromId(
-                            "osm"
-                        );
-
-                    if (!basemap) {
-
-                        console.error(
-                            "ArcGIS Online OSM basemap could not be created."
-                        );
-
-                        return;
-                    }
-
-                    mapEl.map.basemap =
-                        basemap;
-
-                    currentBasemapType =
-                        "osm";
-
-                    console.log(
-                        "BASEMAP -> OpenStreetMap"
-                    );
-
-                } catch (error) {
-
-                    console.error(
-                        "OSM basemap error:",
-                        error
-                    );
-                }
-            }
-
-            function setWorldImagery() {
-
-                if (
-                    !mapEl ||
-                    !mapEl.map
-                ) {
-                    return;
-                }
-
-                try {
-
-                    const basemap =
-                        Basemap.fromId(
-                            "satellite"
-                        );
-
-                    if (!basemap) {
-
-                        console.error(
-                            "ArcGIS Online World Imagery basemap could not be created."
-                        );
-
-                        return;
-                    }
-
-                    mapEl.map.basemap =
-                        basemap;
-
-                    currentBasemapType =
-                        "imagery";
-
-                    console.log(
-                        "BASEMAP -> World Imagery"
-                    );
-
-                } catch (error) {
-
-                    console.error(
-                        "World Imagery basemap error:",
-                        error
-                    );
-                }
-            }
-
-            function updateBasemapForZoom(
-                zoom
+            if (
+                distance <=
+                bucketMeters
             ) {
 
-                if (
-                    !mapEl ||
-                    !mapEl.map
-                ) {
-                    return;
-                }
+                return pointsForHit;
+            }
 
-                if (
-                    typeof zoom !==
-                        "number" ||
-                    !Number.isFinite(
-                        zoom
-                    ) ||
-                    zoom < 0
-                ) {
-                    return;
-                }
-
-                console.log(
-                    "Checking basemap for zoom:",
-                    zoom
+            const buckets =
+                Math.floor(
+                    distance /
+                    bucketMeters
                 );
 
-                /*
-                 * ZOOM OUT
-                 */
+            const score =
+                pointsForHit -
+                buckets *
+                penaltyPerBucket;
 
-                if (
-                    zoom <
-                    IMAGERY_ZOOM
-                ) {
+            return Math.max(
+                minScore,
+                score
+            );
+        }
 
-                    if (
-                        currentBasemapType !==
+        function isDirectHit(
+            distance
+        ) {
+
+            const bucketMeters =
+                Number(
+                    CONFIG.scoring?.bucketMeters ??
+                    500
+                );
+
+            return (
+                distance <=
+                bucketMeters
+            );
+        }
+
+        /* =========================================================================
+         * BASEMAP — OPENSTREETMAP
+         * ========================================================================= */
+
+        async function setOpenStreetMap() {
+
+            if (
+                !mapEl ||
+                !mapEl.map
+            ) {
+
+                return;
+            }
+
+            try {
+
+                const basemap =
+                    Basemap.fromId(
                         "osm"
-                    ) {
-                        setOpenStreetMap();
-                    }
+                    );
+
+                if (!basemap) {
+
+                    console.error(
+                        "OpenStreetMap basemap could not be created."
+                    );
 
                     return;
                 }
 
+                mapEl.map.basemap =
+                    basemap;
+
+                currentBasemapType =
+                    "osm";
+
+                console.log(
+                    "BASEMAP → OpenStreetMap"
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "OpenStreetMap basemap error:",
+                    error
+                );
+            }
+        }
+
+        /* =========================================================================
+         * BASEMAP — SATELLITE + INFORMATION
+         * ========================================================================= */
+
+        async function setWorldImagery() {
+
+            if (
+                !mapEl ||
+                !mapEl.map
+            ) {
+
+                return;
+            }
+
+            try {
+
                 /*
-                 * ZOOM IN
+                 * "hybrid" = World Imagery +
+                 * Hybrid Reference Layer.
+                 *
+                 * Tas nozīmē:
+                 * - satelītattēls
+                 * - ielu nosaukumi
+                 * - vietu nosaukumi
+                 * - administratīvā informācija
+                 * - cita reference informācija
                  */
+
+                const basemap =
+                    Basemap.fromId(
+                        "hybrid"
+                    );
+
+                if (!basemap) {
+
+                    console.error(
+                        "Hybrid basemap could not be created."
+                    );
+
+                    return;
+                }
+
+                mapEl.map.basemap =
+                    basemap;
+
+                currentBasemapType =
+                    "hybrid";
+
+                console.log(
+                    "BASEMAP → Satellite + labels"
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Hybrid basemap error:",
+                    error
+                );
+            }
+        }
+
+        /* =========================================================================
+         * BASEMAP SWITCHING
+         * ========================================================================= */
+
+        async function updateBasemapForZoom(
+            zoom
+        ) {
+
+            if (!basemapSwitchingReady) {
+
+                return;
+            }
+
+            if (
+                typeof zoom !==
+                "number"
+            ) {
+
+                return;
+            }
+
+            if (
+                zoom >=
+                IMAGERY_ZOOM
+            ) {
 
                 if (
                     currentBasemapType !==
-                    "imagery"
+                    "hybrid"
                 ) {
-                    setWorldImagery();
+
+                    await setWorldImagery();
+                }
+
+            } else {
+
+                if (
+                    currentBasemapType !==
+                    "osm"
+                ) {
+
+                    await setOpenStreetMap();
                 }
             }
+        }
 
-            function setupBasemapSwitching() {
+        async function setupBasemapSwitching() {
 
-                if (!mapEl) {
+            if (
+                !mapEl ||
+                !mapEl.map
+            ) {
+
+                return;
+            }
+
+            try {
+
+                /*
+                 * Sākumā izmantojam OSM.
+                 */
+
+                await setOpenStreetMap();
+
+                await mapEl.viewOnReady();
+
+                const view =
+                    mapEl.view;
+
+                if (!view) {
 
                     console.error(
-                        "Basemap: map element not found."
+                        "MapView was not found."
                     );
 
                     return;
                 }
 
-                if (!mapEl.view) {
+                basemapSwitchingReady =
+                    true;
 
-                    console.error(
-                        "Basemap: map view not ready."
-                    );
+                /*
+                 * Iestata pareizo karti
+                 * atbilstoši pašreizējam zoom.
+                 */
 
-                    return;
-                }
+                await updateBasemapForZoom(
+                    view.zoom
+                );
+
+                /*
+                 * Maina karti, kad lietotājs
+                 * pietuvina vai attālina.
+                 */
+
+                view.watch(
+                    "zoom",
+                    async (zoom) => {
+
+                        await updateBasemapForZoom(
+                            zoom
+                        );
+
+                    }
+                );
 
                 console.log(
-                    "Setting up basemap switching..."
+                    "Basemap switching enabled."
                 );
 
-                /*
-                 * Sākumā OSM.
-                 */
+            } catch (error) {
 
-                setOpenStreetMap();
-
-                /*
-                 * ArcGIS dažreiz sākumā dod zoom -1.
-                 *
-                 * Tāpēc gaidām normālu zoom.
-                 */
-
-                const waitForZoom =
-                    () => {
-
-                        if (
-                            !mapEl.view
-                        ) {
-                            setTimeout(
-                                waitForZoom,
-                                300
-                            );
-
-                            return;
-                        }
-
-                        const zoom =
-                            mapEl.view.zoom;
-
-                        console.log(
-                            "Current zoom:",
-                            zoom
-                        );
-
-                        if (
-                            typeof zoom !==
-                                "number" ||
-                            zoom < 0
-                        ) {
-
-                            setTimeout(
-                                waitForZoom,
-                                300
-                            );
-
-                            return;
-                        }
-
-                        basemapSwitchingReady =
-                            true;
-
-                        updateBasemapForZoom(
-                            zoom
-                        );
-
-                        /*
-                         * Zoom listener.
-                         *
-                         * watch() ir vecāks ArcGIS
-                         * API variants, bet darbojas
-                         * tavā pašreizējā projektā.
-                         */
-
-                        mapEl.view.watch(
-                            "zoom",
-                            (
-                                newZoom
-                            ) => {
-
-                                if (
-                                    !basemapSwitchingReady
-                                ) {
-                                    return;
-                                }
-
-                                if (
-                                    typeof newZoom !==
-                                        "number" ||
-                                    newZoom < 0
-                                ) {
-                                    return;
-                                }
-
-                                console.log(
-                                    "Zoom changed:",
-                                    newZoom
-                                );
-
-                                updateBasemapForZoom(
-                                    newZoom
-                                );
-                            }
-                        );
-                    };
-
-                waitForZoom();
+                console.error(
+                    "Basemap switching setup error:",
+                    error
+                );
             }
+        }
 
-            /* =================================================================
-             * PIN
-             * ================================================================= */
+        /* =========================================================================
+         * SYMBOLS
+         * ========================================================================= */
 
-            function makePinSymbol(
-                yoffset
-            ) {
+        function getPinSymbol() {
+
+            return {
+
+                type: "picture-marker",
+
+                url: PIN_URL,
+
+                width:
+                    `${PIN_WIDTH}px`,
+
+                height:
+                    `${PIN_HEIGHT}px`,
+
+                yoffset:
+                    `${PIN_HEIGHT / 2}px`,
+
+                outline: {
+                    color: [
+                        255,
+                        255,
+                        255,
+                        0
+                    ],
+                    width: 0
+                }
+            };
+        }
+
+        function getResultSymbol(
+            correct
+        ) {
+
+            if (correct) {
 
                 return {
-                    type:
-                        "picture-marker",
 
-                    url:
-                        PIN_IMAGE,
+                    type: "simple-marker",
 
-                    width:
-                        PIN_WIDTH,
+                    style: "circle",
 
-                    height:
-                        PIN_HEIGHT,
+                    color: [
+                        0,
+                        170,
+                        90,
+                        0.9
+                    ],
 
-                    yoffset:
-                        yoffset,
-                };
-            }
+                    size: "16px",
 
-            const correctPointSymbol = {
+                    outline: {
 
-                type:
-                    "simple-marker",
+                        color: [
+                            255,
+                            255,
+                            255,
+                            1
+                        ],
 
-                style:
-                    "circle",
-
-                color:
-                    [22, 163, 74, 0.95],
-
-                size:
-                    16,
-
-                outline: {
-                    color:
-                        "white",
-
-                    width:
-                        3,
-                },
-            };
-
-            const correctAreaSymbol = {
-
-                type:
-                    "simple-fill",
-
-                color:
-                    [50, 205, 50, 0.3],
-
-                outline: {
-                    color:
-                        "white",
-
-                    width:
-                        2,
-                },
-            };
-
-            const incorrectAreaSymbol = {
-
-                type:
-                    "simple-fill",
-
-                color:
-                    [220, 20, 60, 0.3],
-
-                outline: {
-                    color:
-                        "white",
-
-                    width:
-                        2,
-                },
-            };
-
-            /* =================================================================
-             * LANGUAGE
-             * ================================================================= */
-
-            function currentLang() {
-
-                return (
-                    LANG_BY_CODE[
-                        currentLanguage
-                    ] ||
-                    DEFAULT_LANG
-                );
-            }
-
-            function t(
-                key,
-                replacements = {}
-            ) {
-
-                const active =
-                    currentLang();
-
-                let text =
-                    (
-                        active &&
-                        active.strings &&
-                        active.strings[key]
-                    ) ||
-                    (
-                        DEFAULT_LANG &&
-                        DEFAULT_LANG.strings &&
-                        DEFAULT_LANG.strings[key]
-                    ) ||
-                    key;
-
-                const values = {
-
-                    appName:
-                        CONFIG.appName ||
-                        "",
-
-                    url:
-                        (
-                            CONFIG.social &&
-                            CONFIG.social.url
-                        ) ||
-                        "",
-
-                    ...replacements,
+                        width: 2
+                    }
                 };
 
-                for (
-                    const [
-                        placeholder,
-                        value,
-                    ] of Object.entries(
-                        values
-                    )
-                ) {
-
-                    text =
-                        text
-                            .split(
-                                `{${placeholder}}`
-                            )
-                            .join(value);
-                }
-
-                return text;
             }
 
-            function buildScoringSummary() {
+            return {
 
-                const s =
-                    CONFIG.scoring || {
+                type: "simple-marker",
 
-                        pointsForHit:
-                            10,
+                style: "circle",
 
-                        bucketMeters:
-                            500,
+                color: [
+                    210,
+                    40,
+                    40,
+                    0.9
+                ],
 
-                        penaltyPerBucket:
-                            1,
+                size: "16px",
 
-                        minScore:
-                            0,
-                    };
+                outline: {
 
-                return t(
-                    "scoringSummaryTemplate",
-                    {
-                        points:
-                            s.pointsForHit,
+                    color: [
+                        255,
+                        255,
+                        255,
+                        1
+                    ],
 
-                        bucket:
-                            s.bucketMeters,
-
-                        penalty:
-                            s.penaltyPerBucket,
-
-                        min:
-                            s.minScore,
-                    }
-                );
-            }
-
-            /* =================================================================
-             * UI
-             * ================================================================= */
-
-            function showPanel(
-                panelName
-            ) {
-
-                for (
-                    const panel of
-                        Object.values(
-                            panels
-                        )
-                ) {
-
-                    if (panel) {
-                        panel.classList.add(
-                            "hidden"
-                        );
-                    }
+                    width: 2
                 }
-
-                if (
-                    panels[panelName]
-                ) {
-
-                    panels[
-                        panelName
-                    ].classList.remove(
-                        "hidden"
-                    );
-                }
-            }
-
-            function updateUI() {
-
-                const activeLang =
-                    currentLang();
-
-                document.documentElement.lang =
-                    currentLanguage;
-
-                document.body.dir =
-                    (
-                        activeLang &&
-                        activeLang.dir
-                    ) ||
-                    "ltr";
-
-                if (
-                    buttons.langToggle
-                ) {
-
-                    buttons.langToggle.innerText =
-                        (
-                            activeLang &&
-                            activeLang.toggleLabel
-                        ) ||
-                        currentLanguage.toUpperCase();
-
-                    buttons.langToggle.classList.toggle(
-                        "hidden",
-                        LANGUAGES.length <
-                            2
-                    );
-                }
-
-                if (
-                    $("welcome-title")
-                ) {
-
-                    $(
-                        "welcome-title"
-                    ).innerHTML =
-                        t(
-                            "welcomeTitle"
-                        );
-                }
-
-                if (
-                    $("welcome-desc")
-                ) {
-
-                    $(
-                        "welcome-desc"
-                    ).innerHTML =
-                        t(
-                            "welcomeDesc",
-                            {
-                                scoringSummary:
-                                    buildScoringSummary(),
-                            }
-                        );
-                }
-
-                if (
-                    buttons.start
-                ) {
-
-                    buttons.start.innerText =
-                        t(
-                            "startButton"
-                        );
-                }
-
-                if (
-                    $("loading-text")
-                ) {
-
-                    $(
-                        "loading-text"
-                    ).innerText =
-                        t(
-                            "loadingText"
-                        );
-                }
-
-                if (
-                    $("find-landmark-text")
-                ) {
-
-                    $(
-                        "find-landmark-text"
-                    ).innerText =
-                        t(
-                            "findLandmarkText"
-                        );
-                }
-
-                if (
-                    $("score-display")
-                ) {
-
-                    $(
-                        "score-display"
-                    ).innerText =
-                        t(
-                            "scoreDisplay",
-                            {
-                                score:
-                                    totalScore,
-                            }
-                        );
-                }
-
-                if (
-                    $("round-display") &&
-                    allLandmarks.length >
-                        0
-                ) {
-
-                    $(
-                        "round-display"
-                    ).innerText =
-                        t(
-                            "roundDisplay",
-                            {
-                                current:
-                                    currentLandmarkIndex +
-                                    1,
-
-                                total:
-                                    allLandmarks.length,
-                            }
-                        );
-                }
-
-                if (
-                    buttons.confirm
-                ) {
-
-                    buttons.confirm.classList.toggle(
-                        "hidden",
-                        !clickedPoint
-                    );
-
-                    buttons.confirm.innerText =
-                        t(
-                            "confirmButton"
-                        );
-                }
-
-                const canFinishEarly =
-                    CONFIG.allowFinishEarly &&
-                    gameState ===
-                        "PLAYING" &&
-                    currentLandmarkIndex <
-                        allLandmarks.length -
-                            1;
-
-                if (
-                    buttons.finishEarly
-                ) {
-
-                    buttons.finishEarly.classList.toggle(
-                        "hidden",
-                        !canFinishEarly
-                    );
-
-                    if (
-                        !finishEarlyArmed
-                    ) {
-
-                        buttons.finishEarly.innerText =
-                            t(
-                                "finishEarlyButton"
-                            );
-                    }
-                }
-
-                if (
-                    buttons.next
-                ) {
-
-                    buttons.next.innerText =
-                        t(
-                            currentLandmarkIndex ===
-                                allLandmarks.length -
-                                    1
-                                ? "gameOverButton"
-                                : "nextButton"
-                        );
-                }
-
-                if (
-                    $("game-over-title")
-                ) {
-
-                    $(
-                        "game-over-title"
-                    ).innerText =
-                        t(
-                            "gameOverTitle"
-                        );
-                }
-
-                if (
-                    $("final-score-text")
-                ) {
-
-                    $(
-                        "final-score-text"
-                    ).innerText =
-                        t(
-                            "finalScoreText"
-                        );
-                }
-
-                if (
-                    $("total-score-label")
-                ) {
-
-                    $(
-                        "total-score-label"
-                    ).innerText =
-                        t(
-                            "totalScoreLabel"
-                        );
-                }
-
-                if (
-                    $("accuracy-label")
-                ) {
-
-                    $(
-                        "accuracy-label"
-                    ).innerText =
-                        t(
-                            "accuracyLabel"
-                        );
-                }
-
-                if (
-                    $("found-label")
-                ) {
-
-                    $(
-                        "found-label"
-                    ).innerText =
-                        t(
-                            "foundLabel"
-                        );
-                }
-
-                if (
-                    buttons.playAgain
-                ) {
-
-                    buttons.playAgain.innerText =
-                        t(
-                            "playAgainButton"
-                        );
-                }
-
-                if (
-                    buttons.share
-                ) {
-
-                    buttons.share.innerText =
-                        t(
-                            "shareButton"
-                        );
-                }
-
-                if (
-                    buttons.submitScore
-                ) {
-
-                    buttons.submitScore.innerText =
-                        t(
-                            "submitScoreButton"
-                        );
-                }
-
-                if (
-                    buttons.viewLeaderboard
-                ) {
-
-                    buttons.viewLeaderboard.innerText =
-                        t(
-                            "viewLeaderboardButton"
-                        );
-                }
-
-                if (
-                    $("share-modal-title")
-                ) {
-
-                    $(
-                        "share-modal-title"
-                    ).innerText =
-                        t(
-                            "shareModalTitle"
-                        );
-                }
-
-                if (
-                    $("share-modal-desc")
-                ) {
-
-                    $(
-                        "share-modal-desc"
-                    ).innerText =
-                        t(
-                            "shareModalDesc"
-                        );
-                }
-
-                if (
-                    $("submit-modal-title")
-                ) {
-
-                    $(
-                        "submit-modal-title"
-                    ).innerText =
-                        t(
-                            "submitModalTitle"
-                        );
-                }
-
-                if (
-                    $("leaderboard-modal-title")
-                ) {
-
-                    $(
-                        "leaderboard-modal-title"
-                    ).innerText =
-                        t(
-                            "leaderboardModalTitle"
-                        );
-                }
-
-                if (
-                    $("leaderboard-loading-text")
-                ) {
-
-                    $(
-                        "leaderboard-loading-text"
-                    ).innerText =
-                        t(
-                            "leaderboardLoadingText"
-                        );
-                }
-
-                if (
-                    $("share-card-title")
-                ) {
-
-                    $(
-                        "share-card-title"
-                    ).innerText =
-                        t(
-                            "shareCardTitle"
-                        );
-                }
-
-                if (
-                    $("share-card-score-label")
-                ) {
-
-                    $(
-                        "share-card-score-label"
-                    ).innerText =
-                        t(
-                            "shareCardScoreLabel"
-                        );
-                }
-
-                if (
-                    $("share-card-accuracy-label")
-                ) {
-
-                    $(
-                        "share-card-accuracy-label"
-                    ).innerText =
-                        t(
-                            "shareCardAccuracyLabel"
-                        );
-                }
-
-                if (
-                    $("share-card-found-label")
-                ) {
-
-                    $(
-                        "share-card-found-label"
-                    ).innerText =
-                        t(
-                            "foundLabel"
-                        );
-                }
-
-                switch (
-                    gameState
-                ) {
-
-                    case "LOADING":
-
-                        showPanel(
-                            "loading"
-                        );
-
-                        break;
-
-                    case "START":
-
-                        showPanel(
-                            "start"
-                        );
-
-                        break;
-
-                    case "PLAYING":
-
-                        showPanel(
-                            "game"
-                        );
-
-                        if (
-                            buttons.confirm
-                        ) {
-
-                            buttons.confirm.classList.toggle(
-                                "hidden",
-                                !clickedPoint
-                            );
+            };
+        }
+
+        /* =========================================================================
+         * UI
+         * ========================================================================= */
+
+        function updateUI() {
+
+            if (scoreEl) {
+
+                scoreEl.textContent =
+                    t(
+                        "scoreDisplay",
+                        {
+                            score:
+                                totalScore
                         }
-
-                        break;
-
-                    case "ROUND_RESULT":
-
-                        showPanel(
-                            "roundResult"
-                        );
-
-                        break;
-
-                    case "GAME_OVER":
-
-                        showPanel(
-                            "gameOver"
-                        );
-
-                        break;
-                }
+                    );
             }
 
-            function toggleLanguage() {
+            if (roundEl) {
 
-                if (
-                    LANGUAGES.length <
-                    2
-                ) {
-                    return;
-                }
+                const total =
+                    landmarkPool.length;
 
-                const idx =
-                    LANGUAGES.findIndex(
-                        (lang) =>
-                            lang.code ===
-                            currentLanguage
+                roundEl.textContent =
+                    t(
+                        "roundDisplay",
+                        {
+                            current:
+                                currentRoundIndex + 1,
+
+                            total:
+                                total
+                        }
                     );
+            }
+        }
 
-                currentLanguage =
-                    LANGUAGES[
-                        (
-                            idx + 1
-                        ) %
-                            LANGUAGES.length
-                    ].code;
+        function showPanel(
+            panel
+        ) {
 
-                updateUI();
+            [
+                welcomePanel,
+                gamePanel,
+                resultPanel,
+                gameOverPanel,
+            ].forEach(
+                (element) => {
 
-                if (
-                    gameState ===
-                        "PLAYING" &&
-                    allLandmarks[
-                        currentLandmarkIndex
-                    ]
-                ) {
+                    if (!element) {
 
-                    const landmark =
-                        allLandmarks[
-                            currentLandmarkIndex
-                        ];
-
-                    if (
-                        $("landmark-name")
-                    ) {
-
-                        $(
-                            "landmark-name"
-                        ).innerText =
-                            getLandmarkName(
-                                landmark
-                            );
+                        return;
                     }
+
+                    element.hidden =
+                        element !== panel;
                 }
+            );
+        }
+
+        /* =========================================================================
+         * LANDMARK HELPERS
+         * ========================================================================= */
+
+        function getLandmarkName(
+            feature
+        ) {
+
+            if (!feature) {
+
+                return "";
             }
 
-            /* =================================================================
-             * ARRAY
-             * ================================================================= */
+            const field =
+                lang.landmarkNameField ||
+                "Name";
 
-            function shuffleArray(
-                array
-            ) {
+            return (
+                feature.attributes?.[field] ||
+                feature.attributes?.Name ||
+                "Nezināma vieta"
+            );
+        }
 
-                for (
-                    let i =
-                        array.length - 1;
-                    i > 0;
-                    i--
-                ) {
+        function getLandmarkPhoto(
+            feature
+        ) {
 
-                    const j =
-                        Math.floor(
-                            Math.random() *
-                                (i + 1)
-                        );
+            if (!feature) {
 
-                    [
-                        array[i],
-                        array[j],
-                    ] = [
-                        array[j],
-                        array[i],
-                    ];
-                }
-
-                return array;
+                return "";
             }
 
-            /* =================================================================
-             * SHARE IMAGE
-             * ================================================================= */
+            /*
+             * Ja iepriekš jau saglabāts imageUrl,
+             * izmanto to.
+             */
 
-            function dataURLtoFile(
-                dataUrl,
-                filename
+            if (
+                feature.attributes?.imageUrl
             ) {
-
-                return fetch(
-                    dataUrl
-                )
-                    .then(
-                        (res) =>
-                            res.blob()
-                    )
-                    .then(
-                        (blob) =>
-                            new File(
-                                [
-                                    blob,
-                                ],
-                                filename,
-                                {
-                                    type:
-                                        blob.type,
-                                }
-                            )
-                    );
-            }
-
-            /* =================================================================
-             * LANDMARK HELPERS
-             * ================================================================= */
-
-            function getLandmarkName(
-                feature
-            ) {
-
-                if (
-                    !feature ||
-                    !feature.attributes
-                ) {
-
-                    return "Nezināma vieta";
-                }
-
-                const lang =
-                    currentLang();
-
-                const field =
-                    (
-                        lang &&
-                        lang.landmarkNameField
-                    ) ||
-                    "Name";
 
                 return (
-                    feature.attributes[
-                        field
-                    ] ||
-                    "Nezināma vieta"
+                    feature.attributes.imageUrl
                 );
             }
 
-            function getLandmarkPhoto(
-                feature
+            const photoField =
+                CONFIG.landmarkPhotoField ||
+                "Photo";
+
+            return (
+                feature.attributes?.[
+                    photoField
+                ] || ""
+            );
+        }
+
+        function getTargetGeometry(
+            feature
+        ) {
+
+            return feature?.geometry ||
+                null;
+        }
+
+        /* =========================================================================
+         * SHUFFLE
+         * ========================================================================= */
+
+        function shuffleArray(
+            array
+        ) {
+
+            const result =
+                [...array];
+
+            for (
+                let i =
+                    result.length - 1;
+                i > 0;
+                i--
             ) {
 
-                if (
-                    !feature ||
-                    !feature.attributes
-                ) {
+                const j =
+                    Math.floor(
+                        Math.random() *
+                        (i + 1)
+                    );
 
-                    return null;
-                }
-
-                if (
-                    feature.attributes
-                        .imageUrl
-                ) {
-
-                    return String(
-                        feature
-                            .attributes
-                            .imageUrl
-                    ).trim();
-                }
-
-                const field =
-                    CONFIG.landmarkPhotoField ||
-                    "Photo";
-
-                const value =
-                    feature.attributes[
-                        field
-                    ];
-
-                if (!value) {
-                    return null;
-                }
-
-                return String(
-                    value
-                ).trim();
+                [
+                    result[i],
+                    result[j]
+                ] =
+                [
+                    result[j],
+                    result[i]
+                ];
             }
 
-            function getTargetGeometry(
-                feature
-            ) {
+            return result;
+        }
 
-                return feature
-                    ? feature.geometry
-                    : null;
+        /* =========================================================================
+         * LOAD GAME DATA
+         * ========================================================================= */
+
+        async function loadGameData() {
+
+            if (!landmarksLayer) {
+
+                throw new Error(
+                    "Landmarks layer was not found."
+                );
             }
 
-            /* =================================================================
-             * DISTANCE
-             * ================================================================= */
+            const query =
+                landmarksLayer.createQuery();
 
-            function getDistanceMeters(
-                targetGeometry,
-                guessPoint
+            query.where =
+                "1=1";
+
+            query.outFields =
+                ["*"];
+
+            query.returnGeometry =
+                true;
+
+            const result =
+                await landmarksLayer.queryFeatures(
+                    query
+                );
+
+            if (
+                !result ||
+                !result.features
             ) {
 
-                if (
-                    !targetGeometry ||
-                    !guessPoint
-                ) {
+                throw new Error(
+                    "No landmark features returned."
+                );
+            }
 
-                    return 0;
+            const features =
+                result.features.filter(
+                    (feature) =>
+                        !!feature.geometry
+                );
+
+            /*
+             * Izmanto config.js norādīto Photo lauku.
+             */
+
+            features.forEach(
+                (feature) => {
+
+                    feature.attributes.imageUrl =
+                        getLandmarkPhoto(
+                            feature
+                        );
                 }
+            );
+
+            allLandmarks =
+                features;
+
+            if (
+                CONFIG.shuffleLandmarks !== false
+            ) {
+
+                landmarkPool =
+                    shuffleArray(
+                        allLandmarks
+                    );
+
+            } else {
+
+                landmarkPool =
+                    [...allLandmarks];
+            }
+
+            /*
+             * Ja roundsPerGame ir norādīts,
+             * ierobežo spēles kārtu skaitu.
+             */
+
+            const rounds =
+                Number(
+                    CONFIG.roundsPerGame
+                );
+
+            if (
+                Number.isFinite(rounds) &&
+                rounds > 0
+            ) {
+
+                landmarkPool =
+                    landmarkPool.slice(
+                        0,
+                        rounds
+                    );
+            }
+
+            console.log(
+                "Loaded landmarks:",
+                landmarkPool.length
+            );
+        }
+
+        /* =========================================================================
+         * START GAME
+         * ========================================================================= */
+
+        async function startGame() {
+
+            totalScore = 0;
+
+            totalDistance = 0;
+
+            foundCount = 0;
+
+            currentRoundIndex = 0;
+
+            finishEarlyConfirm =
+                false;
+
+            gameStarted =
+                true;
+
+            landmarkPool =
+                CONFIG.shuffleLandmarks === false
+                    ? [...allLandmarks]
+                    : shuffleArray(
+                        allLandmarks
+                    );
+
+            const rounds =
+                Number(
+                    CONFIG.roundsPerGame
+                );
+
+            if (
+                Number.isFinite(rounds) &&
+                rounds > 0
+            ) {
+
+                landmarkPool =
+                    landmarkPool.slice(
+                        0,
+                        rounds
+                    );
+            }
+
+            updateUI();
+
+            await startRound();
+        }
+
+        /* =========================================================================
+         * START ROUND
+         * ========================================================================= */
+
+        async function startRound() {
+
+            if (
+                currentRoundIndex >=
+                landmarkPool.length
+            ) {
+
+                endGame();
+
+                return;
+            }
+
+            currentLandmark =
+                landmarkPool[
+                    currentRoundIndex
+                ];
+
+            currentGuessGraphic =
+                null;
+
+            if (
+                currentResultGraphic
+            ) {
 
                 try {
 
-                    const distance =
-                        distanceOperator.execute(
-                            targetGeometry,
-                            guessPoint,
-                            {
-                                unit:
-                                    "meters",
-                            }
-                        );
-
-                    if (
-                        typeof distance ===
-                            "number" &&
-                        !Number.isNaN(
-                            distance
-                        )
-                    ) {
-
-                        return Math.max(
-                            0,
-                            distance
-                        );
-                    }
+                    mapEl.graphics.remove(
+                        currentResultGraphic
+                    );
 
                 } catch (
                     error
                 ) {
 
                     console.warn(
-                        "Distance calculation failed:",
                         error
                     );
                 }
 
-                return 0;
+                currentResultGraphic =
+                    null;
             }
 
-            function isDirectHit(
-                targetGeometry,
-                guessPoint
+            if (
+                mapEl.graphics
             ) {
 
-                if (
-                    !targetGeometry ||
-                    !guessPoint
-                ) {
+                mapEl.graphics.removeAll();
+            }
 
-                    return false;
-                }
-
-                const scoring =
-                    CONFIG.scoring || {
-                        bucketMeters:
-                            500,
-                    };
-
-                const distance =
-                    getDistanceMeters(
-                        targetGeometry,
-                        guessPoint
-                    );
-
-                return (
-                    distance <=
-                    scoring.bucketMeters
+            const name =
+                getLandmarkName(
+                    currentLandmark
                 );
+
+            const photo =
+                getLandmarkPhoto(
+                    currentLandmark
+                );
+
+            if (landmarkNameEl) {
+
+                landmarkNameEl.textContent =
+                    name;
             }
 
-            /* =================================================================
-             * RESULT SYMBOL
-             * ================================================================= */
+            if (landmarkImageEl) {
 
-            function getResultSymbol(
-                geometry,
-                gotFullPoints
-            ) {
+                if (photo) {
 
-                if (!geometry) {
+                    landmarkImageEl.src =
+                        photo;
 
-                    return correctPointSymbol;
-                }
-
-                if (
-                    geometry.type ===
-                        "polygon" ||
-                    geometry.type ===
-                        "extent"
-                ) {
-
-                    return gotFullPoints
-                        ? correctAreaSymbol
-                        : incorrectAreaSymbol;
-                }
-
-                return correctPointSymbol;
-            }
-
-            /* =================================================================
-             * INIT
-             * ================================================================= */
-
-            async function init() {
-
-                try {
-
-                    if (!mapEl) {
-
-                        alert(
-                            "Kartes elements <arcgis-map> nav atrasts index.html failā."
-                        );
-
-                        return;
-                    }
-
-                    console.log(
-                        "ArcGIGuess initialization..."
-                    );
-
-                    if (
-                        CONFIG.portalUrl
-                    ) {
-
-                        esriConfig.portalUrl =
-                            CONFIG.portalUrl;
-                    }
-
-                    /*
-                     * Basemap funkcijas sagatavojam.
-                     */
-
-                    createBasemaps();
-
-                    /*
-                     * Ielādējam TAVU esošo WebMap.
-                     */
-
-                    webmap =
-                        new WebMap({
-                            portalItem: {
-                                id:
-                                    CONFIG.webMapItemId,
-                            },
-                        });
-
-                    mapEl.map =
-                        webmap;
-
-                    await webmap.load();
-
-                    console.log(
-                        "WebMap loaded."
-                    );
-
-                    console.log(
-                        "Original WebMap basemap:",
-                        webmap.basemap
-                    );
-
-                    /*
-                     * Atrodam Vietas slāni.
-                     */
-
-                    landmarksLayer =
-                        webmap.layers.find(
-                            (layer) =>
-                                layer.title ===
-                                "Vietas"
-                        );
-
-                    if (
-                        !landmarksLayer
-                    ) {
-
-                        console.error(
-                            "Layer not found: Vietas"
-                        );
-
-                        alert(
-                            "Tīmekļa kartē neizdevās atrast slāni “Vietas”."
-                        );
-
-                        return;
-                    }
-
-                    /*
-                     * Slēpjam Vietas layer,
-                     * lai spēlētājs neredz atbildes.
-                     */
-
-                    landmarksLayer.visible =
+                    landmarkImageEl.hidden =
                         false;
 
-                    /*
-                     * Sagaidām kartes view.
-                     */
-
-                    await mapEl.viewOnReady();
-
-                    console.log(
-                        "Map view ready."
-                    );
-
-                    console.log(
-                        "Initial zoom:",
-                        mapEl.view.zoom
-                    );
-
-                    /*
-                     * Svarīgi:
-                     *
-                     * Basemap switching tikai
-                     * pēc viewOnReady().
-                     */
-
-                    setupBasemapSwitching();
-
-                    /*
-                     * Ielādējam landmarkus.
-                     */
-
-                    await loadGameData();
-
-                    gameState =
-                        "START";
-
-                    console.log(
-                        "ArcGIGuess ready."
-                    );
-
-                    updateUI();
-
-                } catch (
-                    error
-                ) {
-
-                    console.error(
-                        "Initialization error:",
-                        error
-                    );
-
-                    alert(
-                        "Neizdevās ielādēt spēles datus. Pārbaudi Web Map ID, slāni “Vietas”, publisko piekļuvi un laukus."
-                    );
-
-                    gameState =
-                        "LOADING";
-
-                    updateUI();
-                }
-            }
-
-            /* =================================================================
-             * DATA
-             * ================================================================= */
-
-            function loadGameData() {
-
-                try {
-
-                    const query =
-                        landmarksLayer.createQuery();
-
-                    query.where =
-                        "1=1";
-
-                    query.outFields =
-                        ["*"];
-
-                    query.returnGeometry =
-                        true;
-
-                    return landmarksLayer
-                        .queryFeatures(
-                            query
-                        )
-                        .then(
-                            (
-                                featureSet
-                            ) => {
-
-                                console.log(
-                                    "FeatureSet:",
-                                    featureSet
-                                );
-
-                                const landmarks =
-                                    featureSet.features.filter(
-                                        (
-                                            feature
-                                        ) =>
-                                            feature.geometry
-                                    );
-
-                                landmarks.forEach(
-                                    (
-                                        feature
-                                    ) => {
-
-                                        const photoUrl =
-                                            feature
-                                                .attributes
-                                                .Photo;
-
-                                        feature.attributes.imageUrl =
-                                            photoUrl
-                                                ? String(
-                                                      photoUrl
-                                                  ).trim()
-                                                : null;
-                                    }
-                                );
-
-                                landmarkPool =
-                                    landmarks;
-
-                                allLandmarks =
-                                    landmarks.slice();
-
-                                console.log(
-                                    "Landmarks loaded:",
-                                    landmarkPool.length
-                                );
-
-                                if (
-                                    landmarkPool[0]
-                                ) {
-
-                                    console.log(
-                                        "First feature attributes:",
-                                        landmarkPool[0]
-                                            .attributes
-                                    );
-                                }
-
-                                if (
-                                    !landmarkPool.length
-                                ) {
-
-                                    alert(
-                                        "Netika atrasta neviena vieta."
-                                    );
-                                }
-
-                                return landmarks;
-                            }
-                        )
-                        .catch(
-                            (
-                                error
-                            ) => {
-
-                                console.error(
-                                    "Error querying landmark data:",
-                                    error
-                                );
-
-                                alert(
-                                    "Neizdevās ielādēt vietu datus."
-                                );
-
-                                return Promise.reject(
-                                    error
-                                );
-                            }
-                        );
-
-                } catch (
-                    error
-                ) {
-
-                    console.error(
-                        "Error creating query:",
-                        error
-                    );
-
-                    alert(
-                        "Neizdevās izveidot vietu datu pieprasījumu."
-                    );
-
-                    return Promise.reject(
-                        error
-                    );
-                }
-            }
-
-            /* =================================================================
-             * GAME
-             * ================================================================= */
-
-            function startGame() {
-
-                currentLandmarkIndex =
-                    0;
-
-                totalScore =
-                    0;
-
-                accuracyTracker =
-                    [];
-
-                clickedPoint =
-                    null;
-
-                if (
-                    mapEl.graphics
-                ) {
-
-                    mapEl.graphics.removeAll();
-                }
-
-                allLandmarks =
-                    CONFIG.shuffleLandmarks
-                        ? shuffleArray(
-                              landmarkPool.slice()
-                          )
-                        : landmarkPool.slice();
-
-                if (
-                    CONFIG.roundsPerGame
-                ) {
-
-                    allLandmarks =
-                        allLandmarks.slice(
-                            0,
-                            CONFIG.roundsPerGame
-                        );
-                }
-
-                if (
-                    !allLandmarks.length
-                ) {
-
-                    alert(
-                        "Nav pieejamu vietu spēlei."
-                    );
-
-                    return;
-                }
-
-                startRound();
-            }
-
-            function startRound() {
-
-                clickedPoint =
-                    null;
-
-                if (
-                    mapEl.graphics
-                ) {
-
-                    mapEl.graphics.removeAll();
-                }
-
-                resetFinishEarly();
-
-                const landmark =
-                    allLandmarks[
-                        currentLandmarkIndex
-                    ];
-
-                const name =
-                    getLandmarkName(
-                        landmark
-                    );
-
-                const imageUrl =
-                    getLandmarkPhoto(
-                        landmark
-                    );
-
-                if (
-                    $("landmark-name")
-                ) {
-
-                    $(
-                        "landmark-name"
-                    ).innerText =
-                        name;
-                }
-
-                if (
-                    imageUrl &&
-                    imageElements.container &&
-                    imageElements.image
-                ) {
-
-                    imageElements.container.classList.remove(
-                        "hidden"
-                    );
-
-                    imageElements.image.classList.add(
-                        "hidden"
-                    );
-
-                    if (
-                        imageElements.spinner
-                    ) {
-
-                        imageElements.spinner.classList.remove(
-                            "hidden"
-                        );
-                    }
-
-                    imageElements.image.onload =
-                        () => {
-
-                            imageElements.image.classList.remove(
-                                "hidden"
-                            );
-
-                            if (
-                                imageElements.spinner
-                            ) {
-
-                                imageElements.spinner.classList.add(
-                                    "hidden"
-                                );
-                            }
-                        };
-
-                    imageElements.image.onerror =
-                        () => {
-
-                            imageElements.container.classList.add(
-                                "hidden"
-                            );
-
-                            if (
-                                imageElements.spinner
-                            ) {
-
-                                imageElements.spinner.classList.add(
-                                    "hidden"
-                                );
-                            }
-                        };
-
-                    imageElements.image.src =
-                        imageUrl;
-
-                    imageElements.image.alt =
-                        name;
-
                 } else {
 
-                    if (
-                        imageElements.container
-                    ) {
+                    landmarkImageEl.removeAttribute(
+                        "src"
+                    );
 
-                        imageElements.container.classList.add(
-                            "hidden"
-                        );
-                    }
-
-                    if (
-                        imageElements.spinner
-                    ) {
-
-                        imageElements.spinner.classList.add(
-                            "hidden"
-                        );
-                    }
-
-                    if (
-                        imageElements.image
-                    ) {
-
-                        imageElements.image.removeAttribute(
-                            "src"
-                        );
-                    }
+                    landmarkImageEl.hidden =
+                        true;
                 }
-
-                gameState =
-                    "PLAYING";
-
-                clicksEnabled =
-                    true;
-
-                updateUI();
             }
 
-            /* =================================================================
-             * MAP CLICK / PIN
-             * ================================================================= */
+            if (confirmButton) {
 
-            function handleMapClick(
-                mapPoint
+                confirmButton.disabled =
+                    true;
+            }
+
+            updateUI();
+
+            showPanel(
+                gamePanel
+            );
+
+            /*
+             * Atgriež karti uz spēles sākuma
+             * skatījumu, bet nemaina basemap.
+             */
+
+            try {
+
+                if (
+                    currentLandmark.geometry
+                ) {
+
+                    await mapEl.goTo(
+                        {
+                            center:
+                                currentLandmark.geometry,
+                            zoom: 10
+                        },
+                        {
+                            duration:
+                                700
+                        }
+                    );
+                }
+
+            } catch (
+                error
             ) {
 
-                if (
-                    !clicksEnabled
-                ) {
-                    return;
-                }
+                console.warn(
+                    "Could not move map to round starting position.",
+                    error
+                );
+            }
+        }
 
-                if (!mapPoint) {
-                    return;
-                }
+        /* =========================================================================
+         * MAP CLICK
+         * ========================================================================= */
 
-                clickedPoint =
-                    mapPoint;
+        function handleMapClick(
+            event
+        ) {
 
-                if (
-                    mapEl.graphics
-                ) {
+            if (
+                !gameStarted ||
+                !currentLandmark
+            ) {
 
-                    mapEl.graphics.removeAll();
-                }
+                return;
+            }
 
-                const pinGraphic =
-                    new Graphic({
+            const point =
+                event.mapPoint;
+
+            if (!point) {
+
+                return;
+            }
+
+            if (
+                currentGuessGraphic
+            ) {
+
+                mapEl.graphics.remove(
+                    currentGuessGraphic
+                );
+            }
+
+            currentGuessGraphic =
+                new Graphic(
+                    {
                         geometry:
-                            clickedPoint,
+                            point,
 
                         symbol:
-                            makePinSymbol(
-                                PIN_REST_YOFFSET
-                            ),
-                    });
-
-                mapEl.graphics.add(
-                    pinGraphic
-                );
-
-                animatePinDrop(
-                    pinGraphic
-                );
-
-                updateUI();
-            }
-
-            function animatePinDrop(
-                graphic
-            ) {
-
-                const dropHeight =
-                    60;
-
-                const duration =
-                    650;
-
-                const start =
-                    performance.now();
-
-                function frame(
-                    now
-                ) {
-
-                    const p =
-                        Math.min(
-                            (
-                                now -
-                                start
-                            ) /
-                                duration,
-                            1
-                        );
-
-                    const extra =
-                        dropHeight *
-                        (
-                            1 -
-                            easeOutBounce(
-                                p
-                            )
-                        );
-
-                    graphic.symbol =
-                        makePinSymbol(
-                            PIN_REST_YOFFSET +
-                                extra
-                        );
-
-                    if (
-                        p < 1
-                    ) {
-
-                        requestAnimationFrame(
-                            frame
-                        );
+                            getPinSymbol()
                     }
-                }
-
-                requestAnimationFrame(
-                    frame
                 );
-            }
 
-            function easeOutBounce(
-                x
+            mapEl.graphics.add(
+                currentGuessGraphic
+            );
+
+            if (confirmButton) {
+
+                confirmButton.disabled =
+                    false;
+            }
+        }
+
+        /* =========================================================================
+         * CONFIRM GUESS
+         * ========================================================================= */
+
+        async function confirmGuess() {
+
+            if (
+                !currentLandmark ||
+                !currentGuessGraphic
             ) {
 
-                const n1 =
-                    7.5625;
+                return;
+            }
 
-                const d1 =
-                    2.75;
+            const guessPoint =
+                currentGuessGraphic.geometry;
 
-                if (
-                    x <
-                    1 / d1
-                ) {
+            const targetGeometry =
+                getTargetGeometry(
+                    currentLandmark
+                );
 
-                    return (
-                        n1 *
-                        x *
-                        x
+            if (
+                !targetGeometry
+            ) {
+
+                return;
+            }
+
+            let distance;
+
+            try {
+
+                distance =
+                    distanceOperator.execute(
+                        targetGeometry,
+                        guessPoint,
+                        {
+                            unit: "meters"
+                        }
                     );
-                }
 
-                if (
-                    x <
-                    2 / d1
-                ) {
+            } catch (
+                error
+            ) {
 
-                    return (
-                        n1 *
-                            (
-                                x -=
-                                    1.5 /
-                                    d1
-                            ) *
-                            x +
-                        0.75
-                    );
-                }
+                console.error(
+                    "Distance calculation failed:",
+                    error
+                );
 
-                if (
-                    x <
-                    2.5 / d1
-                ) {
+                return;
+            }
 
-                    return (
-                        n1 *
-                            (
-                                x -=
-                                    2.25 /
-                                    d1
-                            ) *
-                            x +
-                        0.9375
-                    );
-                }
+            if (
+                typeof distance !==
+                "number"
+            ) {
 
-                return (
-                    n1 *
-                        (
-                            x -=
-                                2.625 /
-                                d1
-                        ) *
-                        x +
-                    0.984375
+                return;
+            }
+
+            const roundScore =
+                calculateScore(
+                    distance
+                );
+
+            totalScore +=
+                roundScore;
+
+            totalDistance +=
+                distance;
+
+            foundCount++;
+
+            const correct =
+                isDirectHit(
+                    distance
+                );
+
+            if (
+                currentResultGraphic
+            ) {
+
+                mapEl.graphics.remove(
+                    currentResultGraphic
                 );
             }
 
-            /* =================================================================
-             * CONFIRM GUESS
-             * ================================================================= */
+            currentResultGraphic =
+                new Graphic(
+                    {
+                        geometry:
+                            targetGeometry,
 
-            function confirmGuess() {
+                        symbol:
+                            getResultSymbol(
+                                correct
+                            )
+                    }
+                );
 
-                if (
-                    !clickedPoint
-                ) {
-                    return;
-                }
+            mapEl.graphics.add(
+                currentResultGraphic
+            );
 
-                clicksEnabled =
-                    false;
+            if (resultTitleEl) {
 
-                const targetLandmark =
-                    allLandmarks[
-                        currentLandmarkIndex
-                    ];
-
-                const targetGeometry =
-                    getTargetGeometry(
-                        targetLandmark
-                    );
-
-                const scoring =
-                    CONFIG.scoring || {
-
-                        pointsForHit:
-                            10,
-
-                        bucketMeters:
-                            500,
-
-                        penaltyPerBucket:
-                            1,
-
-                        minScore:
-                            0,
-                    };
-
-                const distanceInMeters =
-                    getDistanceMeters(
-                        targetGeometry,
-                        clickedPoint
-                    );
-
-                const hit =
-                    isDirectHit(
-                        targetGeometry,
-                        clickedPoint
-                    );
-
-                let roundScore;
-
-                if (hit) {
-
-                    roundScore =
-                        scoring.pointsForHit;
-
-                } else {
-
-                    const bands =
-                        Math.floor(
-                            distanceInMeters /
-                                scoring.bucketMeters
-                        );
-
-                    const penalty =
-                        bands *
-                        scoring.penaltyPerBucket;
-
-                    roundScore =
-                        Math.max(
-                            scoring.minScore,
-                            scoring.pointsForHit -
-                                penalty
-                        );
-                }
-
-                const gotFullPoints =
-                    roundScore ===
-                    scoring.pointsForHit;
-
-                let resultTitle;
-                let resultMessage;
-
-                if (
-                    gotFullPoints
-                ) {
-
-                    resultTitle =
-                        t(
+                resultTitleEl.innerHTML =
+                    correct
+                        ? t(
                             "correctTitle"
+                        )
+                        : t(
+                            "incorrectTitle"
                         );
+            }
 
-                    resultMessage =
+            if (resultMessageEl) {
+
+                if (correct) {
+
+                    resultMessageEl.innerHTML =
                         t(
                             "correctMessage",
                             {
                                 roundScore:
-                                    roundScore,
+                                    roundScore
                             }
                         );
 
-                    accuracyTracker.push(
-                        1
-                    );
-
                 } else {
 
-                    resultTitle =
-                        t(
-                            "incorrectTitle"
-                        );
-
-                    resultMessage =
+                    resultMessageEl.innerHTML =
                         t(
                             "incorrectMessage",
                             {
                                 distance:
                                     Math.round(
-                                        distanceInMeters
+                                        distance
                                     ),
 
                                 roundScore:
-                                    roundScore,
+                                    roundScore
                             }
                         );
-
-                    accuracyTracker.push(
-                        0
-                    );
                 }
-
-                totalScore +=
-                    roundScore;
-
-                if (
-                    $("round-result-title")
-                ) {
-
-                    $(
-                        "round-result-title"
-                    ).innerText =
-                        resultTitle;
-
-                    $(
-                        "round-result-title"
-                    ).style.color =
-                        gotFullPoints
-                            ? "#16a34a"
-                            : "#dc2626";
-                }
-
-                if (
-                    $("round-result-message")
-                ) {
-
-                    $(
-                        "round-result-message"
-                    ).innerHTML =
-                        resultMessage;
-                }
-
-                if (
-                    targetGeometry
-                ) {
-
-                    const answerGraphic =
-                        new Graphic({
-                            geometry:
-                                targetGeometry,
-
-                            symbol:
-                                getResultSymbol(
-                                    targetGeometry,
-                                    gotFullPoints
-                                ),
-                        });
-
-                    mapEl.graphics.add(
-                        answerGraphic
-                    );
-
-                    goToAnswer(
-                        targetGeometry
-                    );
-                }
-
-                gameState =
-                    "ROUND_RESULT";
-
-                updateUI();
             }
 
-            function goToAnswer(
-                geometry
+            updateUI();
+
+            if (confirmButton) {
+
+                confirmButton.disabled =
+                    true;
+            }
+
+            showPanel(
+                resultPanel
+            );
+
+            /*
+             * Parāda pareizo lokāciju.
+             */
+
+            try {
+
+                await mapEl.goTo(
+                    {
+                        target:
+                            targetGeometry,
+                        zoom: 17
+                    },
+                    {
+                        duration:
+                            800
+                    }
+                );
+
+            } catch (
+                error
             ) {
 
-                if (!geometry) {
-                    return;
-                }
+                console.warn(
+                    "Could not zoom to correct location:",
+                    error
+                );
+            }
+        }
 
-                let target =
-                    geometry;
+        /* =========================================================================
+         * NEXT ROUND
+         * ========================================================================= */
 
-                if (
-                    geometry.extent
-                ) {
+        async function nextRound() {
 
-                    target =
-                        geometry.extent.expand(
-                            1.8
-                        );
-                }
+            currentRoundIndex++;
 
-                mapEl
-                    .goTo(
-                        target
-                    )
-                    .catch(
-                        (
-                            error
-                        ) => {
+            finishEarlyConfirm =
+                false;
 
-                            if (
-                                error &&
-                                error.name !==
-                                    "AbortError"
-                            ) {
+            if (
+                currentRoundIndex >=
+                landmarkPool.length
+            ) {
 
-                                console.error(
-                                    error
-                                );
-                            }
-                        }
-                    );
+                endGame();
+
+                return;
             }
 
-            /* =================================================================
-             * FINISH EARLY
-             * ================================================================= */
+            await startRound();
+        }
 
-            function resetFinishEarly() {
+        /* =========================================================================
+         * FINISH EARLY
+         * ========================================================================= */
 
-                finishEarlyArmed =
-                    false;
+        function finishEarly() {
 
-                if (
-                    finishEarlyTimer
-                ) {
+            if (
+                !CONFIG.allowFinishEarly
+            ) {
 
-                    clearTimeout(
-                        finishEarlyTimer
-                    );
-
-                    finishEarlyTimer =
-                        null;
-                }
-
-                if (
-                    buttons.finishEarly
-                ) {
-
-                    buttons.finishEarly.classList.remove(
-                        "armed"
-                    );
-
-                    buttons.finishEarly.innerText =
-                        t(
-                            "finishEarlyButton"
-                        );
-                }
+                return;
             }
 
-            function handleFinishEarly() {
+            if (!finishEarlyConfirm) {
+
+                finishEarlyConfirm =
+                    true;
 
                 if (
-                    !finishEarlyArmed
+                    finishEarlyButton
                 ) {
 
-                    finishEarlyArmed =
-                        true;
-
-                    buttons.finishEarly.classList.add(
-                        "armed"
-                    );
-
-                    buttons.finishEarly.innerText =
+                    finishEarlyButton.textContent =
                         t(
                             "finishEarlyConfirm"
                         );
-
-                    finishEarlyTimer =
-                        setTimeout(
-                            resetFinishEarly,
-                            3000
-                        );
-
-                    return;
                 }
-
-                resetFinishEarly();
-
-                clicksEnabled =
-                    false;
-
-                endGame();
-            }
-
-            function nextRound() {
-
-                currentLandmarkIndex++;
-
-                if (
-                    currentLandmarkIndex <
-                    allLandmarks.length
-                ) {
-
-                    startRound();
-
-                } else {
-
-                    endGame();
-                }
-            }
-
-            function endGame() {
-
-                gameState =
-                    "GAME_OVER";
-
-                clicksEnabled =
-                    false;
-
-                updateUI();
-
-                const total =
-                    allLandmarks.length ||
-                    1;
-
-                const foundCount =
-                    accuracyTracker.filter(
-                        (value) =>
-                            value === 1
-                    ).length;
-
-                const accuracy =
-                    Math.round(
-                        (
-                            foundCount /
-                            total
-                        ) *
-                            100
-                    );
-
-                const foundText =
-                    `${foundCount} / ${allLandmarks.length}`;
-
-                if (
-                    $("total-score")
-                ) {
-
-                    $(
-                        "total-score"
-                    ).innerText =
-                        totalScore;
-                }
-
-                if (
-                    $("accuracy")
-                ) {
-
-                    $(
-                        "accuracy"
-                    ).innerText =
-                        `${accuracy}%`;
-                }
-
-                if (
-                    $("found-count")
-                ) {
-
-                    $(
-                        "found-count"
-                    ).innerText =
-                        foundText;
-                }
-
-                if (
-                    $("share-card-score")
-                ) {
-
-                    $(
-                        "share-card-score"
-                    ).innerText =
-                        totalScore;
-                }
-
-                if (
-                    $("share-card-accuracy")
-                ) {
-
-                    $(
-                        "share-card-accuracy"
-                    ).innerText =
-                        `${accuracy}%`;
-                }
-
-                if (
-                    $("share-card-found")
-                ) {
-
-                    $(
-                        "share-card-found"
-                    ).innerText =
-                        foundText;
-                }
-            }
-
-            /* =================================================================
-             * SHARE
-             * ================================================================= */
-
-            function shareResults() {
-
-                const shareCard =
-                    $("share-card");
-
-                if (
-                    !shareCard ||
-                    typeof html2canvas ===
-                        "undefined"
-                ) {
-
-                    console.warn(
-                        "html2canvas is not available."
-                    );
-
-                    return;
-                }
-
-                const fileName =
-                    `${(
-                        CONFIG.appName ||
-                        "arcgigues"
-                    )
-                        .replace(
-                            /\s+/g,
-                            "-"
-                        )
-                        .toLowerCase()}-results.png`;
-
-                shareCard.classList.remove(
-                    "hidden"
-                );
-
-                shareCard.style.position =
-                    "absolute";
-
-                shareCard.style.left =
-                    "-9999px";
 
                 setTimeout(
                     () => {
 
-                        html2canvas(
-                            shareCard,
-                            {
-                                scale:
-                                    2,
+                        finishEarlyConfirm =
+                            false;
 
-                                useCORS:
-                                    true,
-                            }
-                        )
-                            .then(
-                                (
-                                    canvas
-                                ) => {
+                        if (
+                            finishEarlyButton
+                        ) {
 
-                                    const dataUrl =
-                                        canvas.toDataURL(
-                                            "image/png"
-                                        );
+                            finishEarlyButton.textContent =
+                                t(
+                                    "finishEarlyButton"
+                                );
+                        }
 
-                                    return dataURLtoFile(
-                                        dataUrl,
-                                        fileName
-                                    ).then(
-                                        (
-                                            file
-                                        ) => ({
-                                            dataUrl,
-                                            file,
-                                        })
-                                    );
-                                }
-                            )
-                            .then(
-                                ({
-                                    dataUrl,
-                                    file,
-                                }) => {
-
-                                    hideShareCard();
-
-                                    if (
-                                        navigator.share &&
-                                        navigator.canShare &&
-                                        navigator.canShare(
-                                            {
-                                                files:
-                                                    [
-                                                        file,
-                                                    ],
-                                            }
-                                        )
-                                    ) {
-
-                                        return navigator.share(
-                                            {
-                                                title:
-                                                    t(
-                                                        "shareCardTitle"
-                                                    ),
-
-                                                text:
-                                                    t(
-                                                        "shareText",
-                                                        {
-                                                            score:
-                                                                totalScore,
-                                                        }
-                                                    ),
-
-                                                files:
-                                                    [
-                                                        file,
-                                                    ],
-                                            }
-                                        );
-                                    }
-
-                                    if (
-                                        $(
-                                            "share-image-preview"
-                                        )
-                                    ) {
-
-                                        $(
-                                            "share-image-preview"
-                                        ).src =
-                                            dataUrl;
-                                    }
-
-                                    if (
-                                        panels.shareModal
-                                    ) {
-
-                                        panels.shareModal.classList.remove(
-                                            "hidden"
-                                        );
-                                    }
-                                }
-                            )
-                            .catch(
-                                (
-                                    error
-                                ) => {
-
-                                    console.error(
-                                        "Share error:",
-                                        error
-                                    );
-
-                                    hideShareCard();
-                                }
-                            );
                     },
+                    2500
+                );
+
+                return;
+            }
+
+            endGame();
+        }
+
+        /* =========================================================================
+         * END GAME
+         * ========================================================================= */
+
+        function endGame() {
+
+            gameStarted =
+                false;
+
+            const total =
+                landmarkPool.length;
+
+            const accuracy =
+                total > 0
+                    ? (
+                        foundCount /
+                        total
+                    ) *
                     100
-                );
+                    : 0;
+
+            if (finalScoreEl) {
+
+                finalScoreEl.textContent =
+                    totalScore;
             }
 
-            function hideShareCard() {
+            if (accuracyEl) {
 
-                const shareCard =
-                    $("share-card");
-
-                if (!shareCard) {
-                    return;
-                }
-
-                shareCard.classList.add(
-                    "hidden"
-                );
-
-                shareCard.style.position =
-                    "";
-
-                shareCard.style.left =
-                    "";
+                accuracyEl.textContent =
+                    `${Math.round(
+                        accuracy
+                    )}%`;
             }
 
-            /* =================================================================
-             * LEADERBOARD
-             * ================================================================= */
+            if (foundEl) {
 
-            function showSubmitModal() {
+                foundEl.textContent =
+                    `${foundCount}/${total}`;
+            }
 
-                if (
-                    !LEADERBOARD.enabled
-                ) {
+            showPanel(
+                gameOverPanel
+            );
+        }
+
+        /* =========================================================================
+         * SHARE RESULTS
+         * ========================================================================= */
+
+        async function shareResults() {
+
+            const shareConfig =
+                CONFIG.social || {};
+
+            const appName =
+                CONFIG.appName ||
+                "ArcGIGuess";
+
+            const url =
+                shareConfig.url ||
+                window.location.href;
+
+            const shareText =
+                t(
+                    "shareText",
+                    {
+                        score:
+                            totalScore,
+
+                        appName:
+                            appName,
+
+                        url:
+                            url
+                    }
+                );
+
+            /*
+             * Ja pārlūks atbalsta Web Share API,
+             * izmanto to.
+             */
+
+            if (
+                navigator.share
+            ) {
+
+                try {
+
+                    await navigator.share(
+                        {
+                            title:
+                                shareConfig.title ||
+                                appName,
+
+                            text:
+                                shareText,
+
+                            url:
+                                url
+                        }
+                    );
+
                     return;
-                }
 
-                const fieldId =
-                    LEADERBOARD.submitScoreFieldId;
-
-                let url =
-                    `${LEADERBOARD.survey123Url}?${fieldId}=${totalScore}&hide=navbar,header,description,footer,${fieldId}`;
-
-                const surveyLang =
-                    currentLang() &&
-                    currentLang().surveyLang;
-
-                if (
-                    surveyLang
+                } catch (
+                    error
                 ) {
 
-                    url +=
-                        `&lang=${surveyLang}`;
-                }
+                    /*
+                     * Lietotājs varēja aizvērt
+                     * share logu.
+                     */
 
-                if (
-                    $("survey-iframe")
-                ) {
-
-                    $(
-                        "survey-iframe"
-                    ).src =
-                        url;
-                }
-
-                if (
-                    panels.submitModal
-                ) {
-
-                    panels.submitModal.classList.remove(
-                        "hidden"
+                    console.log(
+                        "Share cancelled or failed.",
+                        error
                     );
                 }
             }
 
-            function showLeaderboard() {
+            /*
+             * Ja Web Share nav pieejams,
+             * mēģina nokopēt tekstu.
+             */
 
-                if (
-                    !LEADERBOARD.enabled
-                ) {
-                    return;
-                }
+            try {
 
-                panels.leaderboardModal.classList.remove(
-                    "hidden"
+                await navigator.clipboard.writeText(
+                    shareText
                 );
 
-                panels.leaderboardLoading.classList.remove(
-                    "hidden"
+                alert(
+                    "Rezultāta teksts ir nokopēts!"
                 );
 
-                panels.leaderboardList.classList.add(
-                    "hidden"
+            } catch (
+                error
+            ) {
+
+                console.error(
+                    "Could not copy share text:",
+                    error
                 );
 
-                panels.leaderboardList.innerHTML =
-                    "";
+                alert(
+                    shareText
+                );
+            }
+        }
 
-                fetchLeaderboardData();
+        /* =========================================================================
+         * SUBMIT SCORE
+         * ========================================================================= */
+
+        function showSubmitModal() {
+
+            if (
+                !submitModal ||
+                !submitFrame
+            ) {
+
+                return;
             }
 
-            function fetchLeaderboardData() {
+            if (
+                !LEADERBOARD.survey123Url
+            ) {
 
-                const queryParams = {
+                console.error(
+                    "Survey123 URL is not configured."
+                );
 
-                    f:
-                        "json",
+                return;
+            }
 
-                    where:
-                        "1=1",
+            /*
+             * SVARĪGI:
+             *
+             * config.js:
+             * submitScoreFieldId: "field:score"
+             *
+             * Nevis:
+             * "field: score"
+             */
 
-                    outFields:
-                        `${LEADERBOARD.firstNameField},${LEADERBOARD.lastNameField},${LEADERBOARD.scoreField}`,
+            const fieldId =
+                LEADERBOARD.submitScoreFieldId ||
+                "field:score";
 
-                    orderByFields:
-                        `${LEADERBOARD.scoreField} DESC`,
+            const separator =
+                LEADERBOARD.survey123Url.includes(
+                    "?"
+                )
+                    ? "&"
+                    : "?";
 
-                    resultRecordCount:
-                        LEADERBOARD.topN,
-                };
+            let url =
+                `${LEADERBOARD.survey123Url}${separator}` +
+                `${fieldId}=${encodeURIComponent(
+                    totalScore
+                )}`;
 
-                esriRequest(
+            url +=
+                "&hide=navbar,header,description,footer";
+
+            if (
+                lang.surveyLang
+            ) {
+
+                url +=
+                    `&lang=${encodeURIComponent(
+                        lang.surveyLang
+                    )}`;
+            }
+
+            submitFrame.src =
+                url;
+
+            submitModal.hidden =
+                false;
+        }
+
+        /* =========================================================================
+         * LEADERBOARD
+         * ========================================================================= */
+
+        async function fetchLeaderboardData() {
+
+            if (
+                !LEADERBOARD.dataApiUrl
+            ) {
+
+                throw new Error(
+                    "Leaderboard data API URL is not configured."
+                );
+            }
+
+            const params = {
+
+                f: "json",
+
+                where: "1=1",
+
+                outFields:
+                    [
+                        LEADERBOARD.firstNameField ||
+                            "first_name",
+
+                        LEADERBOARD.lastNameField ||
+                            "last_name",
+
+                        LEADERBOARD.scoreField ||
+                            "score"
+                    ].join(","),
+
+                orderByFields:
+                    `${
+                        LEADERBOARD.scoreField ||
+                        "score"
+                    } DESC`,
+
+                resultRecordCount:
+                    LEADERBOARD.topN ||
+                    10,
+
+                returnGeometry:
+                    false
+            };
+
+            const response =
+                await esriRequest(
                     LEADERBOARD.dataApiUrl,
                     {
                         query:
-                            queryParams,
+                            params,
 
                         responseType:
-                            "json",
+                            "json"
                     }
-                )
-                    .then(
-                        (
-                            response
-                        ) => {
+                );
 
-                            const features =
-                                response.data
-                                    .features;
+            return (
+                response.data?.features ||
+                []
+            );
+        }
 
-                            populateLeaderboard(
-                                features
-                            );
-                        }
-                    )
-                    .catch(
-                        (
-                            error
-                        ) => {
+        function populateLeaderboard(
+            features
+        ) {
 
-                            console.error(
-                                "Leaderboard error:",
-                                error
-                            );
+            if (!leaderboardBody) {
 
-                            panels.leaderboardLoading.classList.add(
-                                "hidden"
-                            );
-
-                            panels.leaderboardList.classList.remove(
-                                "hidden"
-                            );
-
-                            panels.leaderboardList.innerHTML =
-                                `<li class="text-red-600">${t(
-                                    "leaderboardError"
-                                )}</li>`;
-                        }
-                    );
+                return;
             }
 
-            function populateLeaderboard(
-                features
+            leaderboardBody.innerHTML =
+                "";
+
+            if (
+                !features ||
+                features.length === 0
             ) {
 
-                panels.leaderboardLoading.classList.add(
-                    "hidden"
+                const row =
+                    document.createElement(
+                        "tr"
+                    );
+
+                const cell =
+                    document.createElement(
+                        "td"
+                    );
+
+                cell.colSpan =
+                    4;
+
+                cell.textContent =
+                    t(
+                        "noScores"
+                    );
+
+                row.appendChild(
+                    cell
                 );
 
-                panels.leaderboardList.classList.remove(
-                    "hidden"
+                leaderboardBody.appendChild(
+                    row
                 );
 
-                if (
-                    !features ||
-                    features.length ===
-                        0
-                ) {
-
-                    panels.leaderboardList.innerHTML =
-                        `<li>${t(
-                            "noScores"
-                        )}</li>`;
-
-                    return;
-                }
-
-                features.forEach(
-                    (
-                        feature,
-                        index
-                    ) => {
-
-                        const firstName =
-                            feature
-                                .attributes[
-                                LEADERBOARD
-                                    .firstNameField
-                            ] ||
-                            "";
-
-                        const lastName =
-                            feature
-                                .attributes[
-                                LEADERBOARD
-                                    .lastNameField
-                            ] ||
-                            "";
-
-                        const name =
-                            `${firstName} ${lastName}`
-                                .trim() ||
-                            "Anonymous";
-
-                        const score =
-                            feature
-                                .attributes[
-                                LEADERBOARD
-                                    .scoreField
-                            ] ||
-                            0;
-
-                        const li =
-                            document.createElement(
-                                "li"
-                            );
-
-                        li.className =
-                            "p-3 bg-gray-100 rounded-lg flex justify-between items-center";
-
-                        const nameSpan =
-                            document.createElement(
-                                "span"
-                            );
-
-                        nameSpan.className =
-                            "font-bold text-lg text-blue-700";
-
-                        nameSpan.textContent =
-                            `${index + 1}. ${name}`;
-
-                        const scoreSpan =
-                            document.createElement(
-                                "span"
-                            );
-
-                        scoreSpan.className =
-                            "font-semibold text-lg";
-
-                        scoreSpan.textContent =
-                            `${score} ${t(
-                                "points"
-                            )}`;
-
-                        li.appendChild(
-                            nameSpan
-                        );
-
-                        li.appendChild(
-                            scoreSpan
-                        );
-
-                        panels.leaderboardList.appendChild(
-                            li
-                        );
-                    }
-                );
+                return;
             }
 
-            /* =================================================================
-             * STATIC CONFIG
-             * ================================================================= */
+            const firstNameField =
+                LEADERBOARD.firstNameField ||
+                "first_name";
 
-            function applyStaticConfig() {
+            const lastNameField =
+                LEADERBOARD.lastNameField ||
+                "last_name";
 
-                document.title =
-                    `${CONFIG.appName || "ArcGIGuess"} | ${CONFIG.tagline || ""}`;
+            const scoreField =
+                LEADERBOARD.scoreField ||
+                "score";
 
-                const logoAlt =
-                    `${CONFIG.appName || "ArcGIGuess"} Logo`;
-
-                [
-                    $("start-logo"),
-                    $("share-logo"),
-                ].forEach(
-                    (img) => {
-
-                        if (img) {
-
-                            img.alt =
-                                logoAlt;
-                        }
-                    }
-                );
-
-                if (
-                    $("share-card-footer")
-                ) {
-
-                    $(
-                        "share-card-footer"
-                    ).innerText =
-                        CONFIG.shareCardFooter ||
-                        CONFIG.tagline ||
-                        "ArcGIGuess";
-                }
-
-                applySocialMeta();
-
-                if (
-                    !LEADERBOARD ||
-                    !LEADERBOARD.enabled
-                ) {
-
-                    if (
-                        buttons.submitScore
-                    ) {
-
-                        buttons.submitScore.classList.add(
-                            "hidden"
-                        );
-                    }
-
-                    if (
-                        buttons.viewLeaderboard
-                    ) {
-
-                        buttons.viewLeaderboard.classList.add(
-                            "hidden"
-                        );
-                    }
-                }
-            }
-
-            function applySocialMeta() {
-
-                const s =
-                    CONFIG.social;
-
-                if (!s) {
-                    return;
-                }
-
-                const setMeta = (
-                    selector,
-                    value
+            features.forEach(
+                (
+                    feature,
+                    index
                 ) => {
 
-                    if (
-                        value == null ||
-                        value === ""
-                    ) {
-                        return;
-                    }
+                    const attributes =
+                        feature.attributes ||
+                        {};
 
-                    const el =
-                        document.head.querySelector(
-                            selector
+                    const row =
+                        document.createElement(
+                            "tr"
                         );
 
-                    if (el) {
-
-                        el.setAttribute(
-                            "content",
-                            value
+                    const rank =
+                        document.createElement(
+                            "td"
                         );
-                    }
-                };
 
-                setMeta(
-                    'meta[name="description"]',
-                    s.description
-                );
-
-                setMeta(
-                    'meta[property="og:site_name"]',
-                    CONFIG.appName
-                );
-
-                setMeta(
-                    'meta[property="og:title"]',
-                    s.title
-                );
-
-                setMeta(
-                    'meta[property="og:description"]',
-                    s.description
-                );
-
-                setMeta(
-                    'meta[property="og:image"]',
-                    s.image
-                );
-
-                setMeta(
-                    'meta[property="og:url"]',
-                    s.url
-                );
-
-                setMeta(
-                    'meta[name="twitter:title"]',
-                    s.title
-                );
-
-                setMeta(
-                    'meta[name="twitter:description"]',
-                    s.description
-                );
-
-                setMeta(
-                    'meta[name="twitter:image"]',
-                    s.image
-                );
-
-                setMeta(
-                    'meta[name="twitter:site"]',
-                    s.twitterHandle
-                );
-
-                setMeta(
-                    'meta[name="twitter:creator"]',
-                    s.twitterHandle
-                );
-            }
-
-            /* =================================================================
-             * EVENTS
-             * ================================================================= */
-
-            if (mapEl) {
-
-                mapEl.addEventListener(
-                    "arcgisViewClick",
-                    (
-                        event
-                    ) => {
-
-                        if (
-                            !clicksEnabled
-                        ) {
-                            return;
-                        }
-
-                        const mapPoint =
-                            event.detail &&
-                            event.detail
-                                .mapPoint;
-
-                        if (
-                            !mapPoint
-                        ) {
-                            return;
-                        }
-
-                        handleMapClick(
-                            mapPoint
+                    const name =
+                        document.createElement(
+                            "td"
                         );
-                    }
-                );
-            }
 
-            if (
-                buttons.langToggle
-            ) {
+                    const score =
+                        document.createElement(
+                            "td"
+                        );
 
-                buttons.langToggle.addEventListener(
-                    "click",
-                    toggleLanguage
-                );
-            }
+                    rank.textContent =
+                        index + 1;
 
-            if (
-                buttons.start
-            ) {
+                    name.textContent =
+                        [
+                            attributes[
+                                firstNameField
+                            ],
 
-                buttons.start.addEventListener(
-                    "click",
-                    startGame
-                );
-            }
+                            attributes[
+                                lastNameField
+                            ]
+                        ]
+                        .filter(
+                            Boolean
+                        )
+                        .join(" ") ||
+                        "Anonīms";
 
-            if (
-                buttons.confirm
-            ) {
+                    score.textContent =
+                        attributes[
+                            scoreField
+                        ] ??
+                        0;
 
-                buttons.confirm.addEventListener(
-                    "click",
-                    confirmGuess
-                );
-            }
-
-            if (
-                buttons.next
-            ) {
-
-                buttons.next.addEventListener(
-                    "click",
-                    nextRound
-                );
-            }
-
-            if (
-                buttons.finishEarly
-            ) {
-
-                buttons.finishEarly.addEventListener(
-                    "click",
-                    handleFinishEarly
-                );
-            }
-
-            if (
-                buttons.playAgain
-            ) {
-
-                buttons.playAgain.addEventListener(
-                    "click",
-                    startGame
-                );
-            }
-
-            if (
-                buttons.share
-            ) {
-
-                buttons.share.addEventListener(
-                    "click",
-                    shareResults
-                );
-            }
-
-            if (
-                buttons.closeModal
-            ) {
-
-                buttons.closeModal.addEventListener(
-                    "click",
-                    () => {
-
-                        if (
-                            panels.shareModal
-                        ) {
-
-                            panels.shareModal.classList.add(
-                                "hidden"
-                            );
-                        }
-                    }
-                );
-            }
-
-            if (
-                buttons.submitScore
-            ) {
-
-                buttons.submitScore.addEventListener(
-                    "click",
-                    showSubmitModal
-                );
-            }
-
-            if (
-                buttons.viewLeaderboard
-            ) {
-
-                buttons.viewLeaderboard.addEventListener(
-                    "click",
-                    showLeaderboard
-                );
-            }
-
-            if (
-                buttons.closeSubmitModal
-            ) {
-
-                buttons.closeSubmitModal.addEventListener(
-                    "click",
-                    () => {
-
-                        if (
-                            panels.submitModal
-                        ) {
-
-                            panels.submitModal.classList.add(
-                                "hidden"
-                            );
-                        }
-
-                        if (
-                            $("survey-iframe")
-                        ) {
-
-                            $(
-                                "survey-iframe"
-                            ).src =
-                                "";
-                        }
-                    }
-                );
-            }
-
-            if (
-                buttons.closeLeaderboardModal
-            ) {
-
-                buttons.closeLeaderboardModal.addEventListener(
-                    "click",
-                    () => {
-
-                        if (
-                            panels.leaderboardModal
-                        ) {
-
-                            panels.leaderboardModal.classList.add(
-                                "hidden"
-                            );
-                        }
-                    }
-                );
-            }
-
-            /* =================================================================
-             * START
-             * ================================================================= */
-
-            applyStaticConfig();
-
-            updateUI();
-
-            init();
-
-            /* =================================================================
-             * DEBUG / TEST
-             * ================================================================= */
-
-            window.skipToResults =
-                () => {
-
-                    console.log(
-                        "Skipping to results with a random score."
+                    row.appendChild(
+                        rank
                     );
 
-                    if (
-                        allLandmarks.length ===
-                        0
-                    ) {
+                    row.appendChild(
+                        name
+                    );
 
-                        allLandmarks =
-                            new Array(
-                                5
-                            ).fill(1);
-                    }
+                    row.appendChild(
+                        score
+                    );
 
-                    totalScore =
-                        Math.floor(
-                            Math.random() *
-                                (
-                                    allLandmarks.length *
-                                    8
-                                )
-                        ) +
-                        10;
-
-                    accuracyTracker =
-                        allLandmarks.map(
-                            () =>
-                                Math.random() >
-                                0.5
-                                    ? 1
-                                    : 0
-                        );
-
-                    endGame();
-                };
+                    leaderboardBody.appendChild(
+                        row
+                    );
+                }
+            );
         }
-    );
+
+        async function showLeaderboard() {
+
+            if (
+                !leaderboardModal
+            ) {
+
+                return;
+            }
+
+            leaderboardModal.hidden =
+                false;
+
+            if (leaderboardBody) {
+
+                leaderboardBody.innerHTML =
+                    `<tr>
+                        <td colspan="4">
+                            ${t(
+                                "leaderboardLoadingText"
+                            )}
+                        </td>
+                    </tr>`;
+            }
+
+            try {
+
+                const features =
+                    await fetchLeaderboardData();
+
+                populateLeaderboard(
+                    features
+                );
+
+            } catch (
+                error
+            ) {
+
+                console.error(
+                    "Leaderboard error:",
+                    error
+                );
+
+                if (
+                    leaderboardBody
+                ) {
+
+                    leaderboardBody.innerHTML =
+                        `<tr>
+                            <td colspan="4">
+                                ${t(
+                                    "leaderboardError"
+                                )}
+                            </td>
+                        </tr>`;
+                }
+            }
+        }
+
+        /* =========================================================================
+         * CLOSE MODALS
+         * ========================================================================= */
+
+        function closeModal(
+            modal
+        ) {
+
+            if (modal) {
+
+                modal.hidden =
+                    true;
+            }
+        }
+
+        /* =========================================================================
+         * LANGUAGE
+         * ========================================================================= */
+
+        function toggleLanguage() {
+
+            /*
+             * Šobrīd config.js satur tikai LV,
+             * tāpēc šeit nav ko pārslēgt.
+             */
+
+            console.log(
+                "Only Latvian language is configured."
+            );
+        }
+
+        /* =========================================================================
+         * STATIC CONFIG
+         * ========================================================================= */
+
+        function applyStaticConfig() {
+
+            document.title =
+                CONFIG.appName ||
+                document.title;
+
+            const appNameElements =
+                document.querySelectorAll(
+                    "[data-config='appName']"
+                );
+
+            appNameElements.forEach(
+                (element) => {
+
+                    element.textContent =
+                        CONFIG.appName ||
+                        "";
+                }
+            );
+
+            const taglineElements =
+                document.querySelectorAll(
+                    "[data-config='tagline']"
+                );
+
+            taglineElements.forEach(
+                (element) => {
+
+                    element.textContent =
+                        CONFIG.tagline ||
+                        "";
+                }
+            );
+
+            const scoringElements =
+                document.querySelectorAll(
+                    "[data-scoring-summary]"
+                );
+
+            scoringElements.forEach(
+                (element) => {
+
+                    element.innerHTML =
+                        buildScoringSummary();
+                }
+            );
+
+            if (
+                startButton
+            ) {
+
+                startButton.textContent =
+                    t(
+                        "startButton"
+                    );
+            }
+
+            if (
+                confirmButton
+            ) {
+
+                confirmButton.textContent =
+                    t(
+                        "confirmButton"
+                    );
+            }
+
+            if (
+                nextButton
+            ) {
+
+                nextButton.textContent =
+                    t(
+                        "nextButton"
+                    );
+            }
+
+            if (
+                finishEarlyButton
+            ) {
+
+                finishEarlyButton.textContent =
+                    t(
+                        "finishEarlyButton"
+                    );
+            }
+
+            if (
+                gameOverButton
+            ) {
+
+                gameOverButton.textContent =
+                    t(
+                        "gameOverButton"
+                    );
+            }
+
+            if (
+                playAgainButton
+            ) {
+
+                playAgainButton.textContent =
+                    t(
+                        "playAgainButton"
+                    );
+            }
+
+            if (
+                shareButton
+            ) {
+
+                shareButton.textContent =
+                    t(
+                        "shareButton"
+                    );
+            }
+
+            if (
+                submitScoreButton
+            ) {
+
+                submitScoreButton.textContent =
+                    t(
+                        "submitScoreButton"
+                    );
+            }
+
+            if (
+                viewLeaderboardButton
+            ) {
+
+                viewLeaderboardButton.textContent =
+                    t(
+                        "viewLeaderboardButton"
+                    );
+            }
+        }
+
+        /* =========================================================================
+         * INIT
+         * ========================================================================= */
+
+        async function init() {
+
+            try {
+
+                console.log(
+                    "ArcGIGuess starting..."
+                );
+
+                /*
+                 * ArcGIS Portal URL
+                 */
+
+                if (
+                    CONFIG.portalUrl
+                ) {
+
+                    esriConfig.portalUrl =
+                        CONFIG.portalUrl;
+                }
+
+                /*
+                 * WebMap
+                 */
+
+                if (
+                    !CONFIG.webMapItemId
+                ) {
+
+                    throw new Error(
+                        "webMapItemId is missing in config.js"
+                    );
+                }
+
+                webmap =
+                    new WebMap(
+                        {
+                            portalItem:
+                                {
+                                    id:
+                                        CONFIG.webMapItemId
+                                }
+                        }
+                    );
+
+                mapEl.map =
+                    webmap;
+
+                await webmap.load();
+
+                console.log(
+                    "WebMap loaded."
+                );
+
+                /*
+                 * Atrodam spēles slāni,
+                 * izmantojot config.js.
+                 */
+
+                const landmarkLayerTitle =
+                    CONFIG.landmarkLayerTitle ||
+                    "Vietas";
+
+                landmarksLayer =
+                    webmap.layers.find(
+                        (layer) =>
+                            layer.title ===
+                            landmarkLayerTitle
+                    );
+
+                if (
+                    !landmarksLayer
+                ) {
+
+                    throw new Error(
+                        `Tīmekļa kartē neizdevās atrast slāni "${landmarkLayerTitle}".`
+                    );
+                }
+
+                console.log(
+                    "Landmark layer found:",
+                    landmarksLayer.title
+                );
+
+                /*
+                 * Slānis tiek paslēpts,
+                 * lai pareizās vietas nebūtu redzamas.
+                 */
+
+                landmarksLayer.visible =
+                    false;
+
+                /*
+                 * Sagaidām MapView.
+                 */
+
+                await mapEl.viewOnReady();
+
+                console.log(
+                    "MapView ready."
+                );
+
+                /*
+                 * Ieslēdz OSM / Hybrid
+                 * automātisko pārslēgšanu.
+                 */
+
+                await setupBasemapSwitching();
+
+                /*
+                 * Ielādē vietas.
+                 */
+
+                await loadGameData();
+
+                /*
+                 * Sākuma UI.
+                 */
+
+                applyStaticConfig();
+
+                updateUI();
+
+                showPanel(
+                    welcomePanel
+                );
+
+                console.log(
+                    "ArcGIGuess initialized successfully."
+                );
+
+            } catch (
+                error
+            ) {
+
+                console.error(
+                    "ArcGIGuess initialization error:",
+                    error
+                );
+
+                alert(
+                    t(
+                        "webMapError"
+                    )
+                );
+            }
+        }
+
+        /* =========================================================================
+         * EVENTS
+         * ========================================================================= */
+
+        if (
+            mapEl
+        ) {
+
+            mapEl.addEventListener(
+                "arcgisViewClick",
+                (
+                    event
+                ) => {
+
+                    handleMapClick(
+                        event
+                    );
+                }
+            );
+        }
+
+        if (
+            startButton
+        ) {
+
+            startButton.addEventListener(
+                "click",
+                startGame
+            );
+        }
+
+        if (
+            confirmButton
+        ) {
+
+            confirmButton.addEventListener(
+                "click",
+                confirmGuess
+            );
+        }
+
+        if (
+            nextButton
+        ) {
+
+            nextButton.addEventListener(
+                "click",
+                nextRound
+            );
+        }
+
+        if (
+            finishEarlyButton
+        ) {
+
+            finishEarlyButton.addEventListener(
+                "click",
+                finishEarly
+            );
+        }
+
+        if (
+            gameOverButton
+        ) {
+
+            gameOverButton.addEventListener(
+                "click",
+                endGame
+            );
+        }
+
+        if (
+            playAgainButton
+        ) {
+
+            playAgainButton.addEventListener(
+                "click",
+                startGame
+            );
+        }
+
+        if (
+            shareButton
+        ) {
+
+            shareButton.addEventListener(
+                "click",
+                shareResults
+            );
+        }
+
+        if (
+            submitScoreButton
+        ) {
+
+            submitScoreButton.addEventListener(
+                "click",
+                showSubmitModal
+            );
+        }
+
+        if (
+            viewLeaderboardButton
+        ) {
+
+            viewLeaderboardButton.addEventListener(
+                "click",
+                showLeaderboard
+            );
+        }
+
+        if (
+            languageButton
+        ) {
+
+            languageButton.addEventListener(
+                "click",
+                toggleLanguage
+            );
+        }
+
+        /*
+         * Aizver Submit modal.
+         */
+
+        document
+            .querySelectorAll(
+                "[data-close-submit-modal]"
+            )
+            .forEach(
+                (button) => {
+
+                    button.addEventListener(
+                        "click",
+                        () => {
+
+                            closeModal(
+                                submitModal
+                            );
+                        }
+                    );
+                }
+            );
+
+        /*
+         * Aizver leaderboard modal.
+         */
+
+        document
+            .querySelectorAll(
+                "[data-close-leaderboard-modal]"
+            )
+            .forEach(
+                (button) => {
+
+                    button.addEventListener(
+                        "click",
+                        () => {
+
+                            closeModal(
+                                leaderboardModal
+                            );
+                        }
+                    );
+                }
+            );
+
+        /*
+         * Aizver share modal.
+         */
+
+        document
+            .querySelectorAll(
+                "[data-close-share-modal]"
+            )
+            .forEach(
+                (button) => {
+
+                    button.addEventListener(
+                        "click",
+                        () => {
+
+                            closeModal(
+                                shareModal
+                            );
+                        }
+                    );
+                }
+            );
+
+        /* =========================================================================
+         * APPLY CONFIG + START
+         * ========================================================================= */
+
+        applyStaticConfig();
+
+        updateUI();
+
+        await init();
+
+        /* =========================================================================
+         * DEBUG
+         * ========================================================================= */
+
+        window.skipToResults =
+            function () {
+
+                endGame();
+
+            };
+
+        window.arcgisGuess =
+            {
+                startGame,
+                startRound,
+                endGame,
+                setOpenStreetMap,
+                setWorldImagery,
+                updateBasemapForZoom
+            };
+    }
+)
+.catch(
+    (error) => {
+
+        console.error(
+            "Failed to load ArcGIS modules:",
+            error
+        );
+    }
+);
