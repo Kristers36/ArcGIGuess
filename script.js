@@ -285,13 +285,13 @@ $arcgis
  
                     const basemap = 
                         Basemap.fromId( 
-                            "satellite" 
+                            "hybrid" 
                         ); 
  
                     if (!basemap) { 
  
                         console.error( 
-                            "ArcGIS Online World Imagery basemap could not be created." 
+                            "ArcGIS Online World Hybrid basemap could not be created." 
                         ); 
  
                         return; 
@@ -304,13 +304,13 @@ $arcgis
                         "imagery"; 
  
                     console.log( 
-                        "BASEMAP -> World Imagery" 
+                        "BASEMAP -> Imagery Hybrid" 
                     ); 
  
                 } catch (error) { 
  
                     console.error( 
-                        "World Imagery basemap error:", 
+                        "Imagery Hybrid basemap error:", 
                         error 
                     ); 
                 } 
