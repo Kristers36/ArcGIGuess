@@ -2939,46 +2939,25 @@ if ( gotFullPoints ) {
 );
 
 if ( gotFullPoints ) {
+resultTitle = getScoreTitle( roundScore, scoring );
 
-    resultMessage =
-        t(
-            "correctMessage",
-            {
-                roundScore:
-                    roundScore,
-            }
-        );
+if ( gotFullPoints ) {
+  resultMessage = t( "correctMessage", {
+    roundScore: roundScore,
+  } );
 
-    accuracyTracker.push(
-        1
-    );
-
+  accuracyTracker.push( 1 );
 } else {
+  const displayDistance = Number.isFinite( distanceInMeters )
+    ? Math.round( distanceInMeters )
+    : "ļoti tālu";
 
-    const displayDistance =
-        Number.isFinite(
-            distanceInMeters
-        )
-            ? Math.round(
-                  distanceInMeters
-              )
-            : "ļoti tālu";
+  resultMessage = t( "incorrectMessage", {
+    distance: displayDistance,
+    roundScore: roundScore,
+  } );
 
-    resultMessage =
-        t(
-            "incorrectMessage",
-            {
-                distance:
-                    displayDistance,
-
-                roundScore:
-                    roundScore,
-            }
-        );
-
-    accuracyTracker.push(
-        0
-    );
+  accuracyTracker.push( 0 );
 }
 
                 totalScore +=
