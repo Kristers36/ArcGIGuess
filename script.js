@@ -2997,25 +2997,25 @@ if ( gotFullPoints ) {
     );
 }
 
-                totalScore +=
-                    roundScore;
+totalScore +=
+    roundScore;
 
-                if (
-                    $("round-result-title")
-                ) {
+if (
+    $("round-result-title")
+) {
 
-                    $(
-                        "round-result-title"
-                    ).innerText =
-                        resultTitle;
+    $(
+        "round-result-title"
+    ).innerText =
+        resultTitle;
 
-                    $(
-                        "round-result-title"
-                    ).style.color =
-                        gotFullPoints
-                            ? "#16a34a"
-                            : "#dc2626";
-                }
+    $(
+        "round-result-title"
+    ).style.color =
+        gotFullPoints
+            ? "#16a34a"
+            : "#dc2626";
+}
 
                 if (
                     $("round-result-message")
