@@ -2933,12 +2933,6 @@ function shouldUseFullScoreBuffer( landmark ) {
  resultTitle = getScoreTitle( roundScore, scoring );
 
 if ( gotFullPoints ) {
- resultTitle = getScoreTitle(
-    roundScore,
-    scoring
-);
-
-if ( gotFullPoints ) {
 resultTitle = getScoreTitle( roundScore, scoring );
 
 if ( gotFullPoints ) {
