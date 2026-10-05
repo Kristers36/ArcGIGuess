@@ -131,10 +131,10 @@ window.ARCGIGUESS_CONFIG = {
                     "Ideāli! Tu nopelnīji <strong>+{roundScore} punktus</strong>.",
                 
        distanceTitles: {
-  veryClose: "Ļoti tuvu!",
-  close: "Labs mēģinājums!",
-  medium: "Labs virziens!",
-  far: "Skaties plašāk!",
+ almost: "Gandrīz izdevās!",
+  close: "Labs mēģinājums, esi tuvu!",
+  medium: "Virziens ir labs, precizē atrašanās vietu!",
+  far: "Pamēģini paskatīties plašākā apkārtnē!",
   veryFar: "Nākreiz sanāks!"
 },
 
