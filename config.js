@@ -42,18 +42,14 @@ window.ARCGIGUESS_CONFIG = {
 
     // Atļaut pabeigt spēli ātrāk
     allowFinishEarly: true,
-    customLandmarkPrompts: {
-    "Staburags":
-        "Kur atrodas šī klints?",
-
-    "Ķemeru Nacionālais parks":
-        "Kur atrodas šis nacionālais parks?",
-
-    "Rundāles pils":
-        "Kur atrodas šī pils?",
-
-    "Aglonas bazilika":
-        "Kur atrodas šī vieta?",
+   customLandmarkPrompts: {
+  "Ventas rumba": "Kur atrodas Eiropas platākais ūdenskritums?",
+  "Staburags": "Kur Daugavas ūdeņi paslēpa Staburagu?",
+  "Aglonas bazilika": "Kur atrodas Latvijas slavenākā svētvieta?",
+  "Turaidas pils": "Kur Siguldas pusē slēpjas sarkanā pils?",
+  "Zvārtes iezis": "Kur pie Amatas upes ir novērojams viens no skaistākajiem iežiem?",
+  "Āraišu ezerpils": "Kur ezera vidū reiz dzīvoja senie latgaļi?",
+  "Ķemeru Nacionālais parks": "Kurš parks ir atpazīstams ar sēravotiem?"
 },
  noFullScoreBufferLandmarks: [
     "Abavas senleja",
