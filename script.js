@@ -2941,15 +2941,14 @@ function shouldUseFullScoreBuffer( landmark ) {
                         );
                 }
 
-                const gotFullPoints =
-                    roundScore ===
-                    scoring.pointsForHit;
+               const gotFullPoints =
+    roundScore ===
+    scoring.pointsForHit;
 
-                let resultTitle;
-                let resultMessage;
+let resultTitle;
+let resultMessage;
 
-               if ( gotFullPoints ) {
- resultTitle =
+resultTitle =
     getDistanceTitle(
         roundScore,
         scoring
