@@ -2741,7 +2741,33 @@ function shouldUseFullScoreBuffer( landmark ) {
                 }
 
                 return false;
-            }function confirmGuess() {
+            }
+         function getScoreTitle( roundScore, scoring ) {
+  const maxScore = scoring.pointsForHit || 10;
+
+  if ( roundScore >= maxScore ) {
+    return t( "correctTitle" );
+  }
+
+  if ( roundScore >= maxScore - 1 ) {
+    return "Gandrīz izdevās!";
+  }
+
+  if ( roundScore >= maxScore - 3 ) {
+    return "Labs mēģinājums, esi tuvu!";
+  }
+
+  if ( roundScore >= maxScore - 5 ) {
+    return "Virziens ir labs, precizē atrašanās vietu!";
+  }
+
+  if ( roundScore >= maxScore - 7 ) {
+    return "Pamēģini paskatīties plašākā apkārtnē!";
+  }
+
+  return "Pamēģini citu Latvijas pusi!";
+}
+         function confirmGuess() {
 
                 if (
                     !clickedPoint
@@ -2904,65 +2930,26 @@ function shouldUseFullScoreBuffer( landmark ) {
                 let resultTitle;
                 let resultMessage;
 
-               if ( gotFullPoints ) {
-    resultTitle = t( "correctTitle" );
-    resultMessage = t( "correctMessage", {
-        roundScore: roundScore,
-    } );
-    accuracyTracker.push( 1 );
+ resultTitle = getScoreTitle( roundScore, scoring );
+
+if ( gotFullPoints ) {
+  resultMessage = t( "correctMessage", {
+    roundScore: roundScore,
+  } );
+
+  accuracyTracker.push( 1 );
+} else {
+  const displayDistance = Number.isFinite( distanceInMeters )
+    ? Math.round( distanceInMeters )
+    : "ļoti tālu";
+
+  resultMessage = t( "incorrectMessage", {
+    distance: displayDistance,
+    roundScore: roundScore,
+  } );
+
+  accuracyTracker.push( 0 );
 }
-               else {
-
-                    /*
-                     * Ja tev ir randomT() funkcija un incorrectTitles masīvs,
-                     * vari lietot randomT().
-                     * Ja nav, šī daļa automātiski lietos parasto t().
-                     */
-
-                    if (
-                        typeof randomT ===
-                            "function"
-                    ) {
-
-                        resultTitle =
-                            randomT(
-                                "incorrectTitles",
-                                "incorrectTitle"
-                            );
-
-                    } else {
-
-                        resultTitle =
-                            t(
-                                "incorrectTitle"
-                            );
-                    }
-
-                    const displayDistance =
-                        Number.isFinite(
-                            distanceInMeters
-                        )
-                            ? Math.round(
-                                  distanceInMeters
-                              )
-                            : "ļoti tālu";
-
-                    resultMessage =
-                        t(
-                            "incorrectMessage",
-                            {
-                                distance:
-                                    displayDistance,
-
-                                roundScore:
-                                    roundScore,
-                            }
-                        );
-
-                    accuracyTracker.push(
-                        0
-                    );
-                }
 
                 totalScore +=
                     roundScore;
