@@ -2933,22 +2933,52 @@ function shouldUseFullScoreBuffer( landmark ) {
  resultTitle = getScoreTitle( roundScore, scoring );
 
 if ( gotFullPoints ) {
-  resultMessage = t( "correctMessage", {
-    roundScore: roundScore,
-  } );
+ resultTitle = getScoreTitle(
+    roundScore,
+    scoring
+);
 
-  accuracyTracker.push( 1 );
+if ( gotFullPoints ) {
+
+    resultMessage =
+        t(
+            "correctMessage",
+            {
+                roundScore:
+                    roundScore,
+            }
+        );
+
+    accuracyTracker.push(
+        1
+    );
+
 } else {
-  const displayDistance = Number.isFinite( distanceInMeters )
-    ? Math.round( distanceInMeters )
-    : "ļoti tālu";
 
-  resultMessage = t( "incorrectMessage", {
-    distance: displayDistance,
-    roundScore: roundScore,
-  } );
+    const displayDistance =
+        Number.isFinite(
+            distanceInMeters
+        )
+            ? Math.round(
+                  distanceInMeters
+              )
+            : "ļoti tālu";
 
-  accuracyTracker.push( 0 );
+    resultMessage =
+        t(
+            "incorrectMessage",
+            {
+                distance:
+                    displayDistance,
+
+                roundScore:
+                    roundScore,
+            }
+        );
+
+    accuracyTracker.push(
+        0
+    );
 }
 
                 totalScore +=
