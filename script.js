@@ -1,4 +1,4 @@
-/* =============================================================================
+ /* =============================================================================
  * ArcGIGuess — Game logic
  * =============================================================================
  * Pazudusī Latvija — Atrodi vietu kartē
@@ -11,6 +11,7 @@ $arcgis
         "@arcgis/core/Graphic.js",
         "@arcgis/core/request.js",
         "@arcgis/core/geometry/operators/distanceOperator.js",
+        "@arcgis/core/geometry/geometryEngine.js",
         "@arcgis/core/Basemap.js",
     ])
     .then(
@@ -20,6 +21,7 @@ $arcgis
             Graphic,
             esriRequest,
             distanceOperator,
+            geometryEngine,
             Basemap,
         ]) => {
 
@@ -111,7 +113,7 @@ $arcgis
                     ? DEFAULT_LANG.code
                     : "lv";
 
-            /* =================================================================
+             /* =================================================================
              * GAME STATE
              * ================================================================= */
 
@@ -135,6 +137,9 @@ $arcgis
 
             let clickedPoint =
                 null;
+
+            let currentRoundHasCustomPrompt =
+                false;
 
             let webmap =
                 null;
@@ -172,7 +177,7 @@ $arcgis
              * ================================================================= */
 
             const IMAGERY_ZOOM =
-                15;
+                16;
 
             let currentBasemapType =
                 null;
@@ -543,7 +548,82 @@ $arcgis
 
                 return text;
             }
+function randomT(
+    key,
+    fallbackKey,
+    replacements = {}
+) {
 
+    const active =
+        currentLang();
+
+    let values =
+        (
+            active &&
+            active.strings &&
+            active.strings[key]
+        ) ||
+        (
+            DEFAULT_LANG &&
+            DEFAULT_LANG.strings &&
+            DEFAULT_LANG.strings[key]
+        );
+
+    if (
+        Array.isArray(values) &&
+        values.length > 0
+    ) {
+
+        const randomIndex =
+            Math.floor(
+                Math.random() *
+                    values.length
+            );
+
+        let text =
+            values[randomIndex];
+
+        const replacementValues = {
+
+            appName:
+                CONFIG.appName ||
+                "",
+
+            url:
+                (
+                    CONFIG.social &&
+                    CONFIG.social.url
+                ) ||
+                "",
+
+            ...replacements,
+        };
+
+        for (
+            const [
+                placeholder,
+                value,
+            ] of Object.entries(
+                replacementValues
+            )
+        ) {
+
+            text =
+                text
+                    .split(
+                        `{${placeholder}}`
+                    )
+                    .join(value);
+        }
+
+        return text;
+    }
+
+    return t(
+        fallbackKey || key,
+        replacements
+    );
+}
             function buildScoringSummary() {
 
                 const s =
@@ -605,7 +685,32 @@ $arcgis
                     );
                 }
             }
+function updateFindLandmarkTextVisibility() {
+    const el = $("find-landmark-text");
 
+    if ( !el ) {
+        return;
+    }
+
+    if ( currentRoundHasCustomPrompt ) {
+        el.classList.add( "hidden" );
+        el.style.setProperty( "display", "none", "important" );
+        el.style.visibility = "hidden";
+        el.style.height = "0";
+        el.style.margin = "0";
+        el.style.padding = "0";
+        el.innerText = "";
+        return;
+    }
+
+    el.classList.remove( "hidden" );
+    el.style.removeProperty( "display" );
+    el.style.visibility = "";
+    el.style.height = "";
+    el.style.margin = "";
+    el.style.padding = "";
+    el.innerText = t( "findLandmarkText" );
+}
             function updateUI() {
 
                 const activeLang =
@@ -679,16 +784,7 @@ $arcgis
                             "loadingText"
                         );
                 }
-
-                if (
-                    $("find-landmark-text")
-                ) {
-                    $("find-landmark-text").innerText =
-                        t(
-                            "findLandmarkText"
-                        );
-                }
-
+              updateFindLandmarkTextVisibility();
                 if (
                     $("score-display")
                 ) {
@@ -1133,7 +1229,49 @@ $arcgis
                     "Nezināma vieta"
                 );
             }
+function getCustomLandmarkPrompt(
+    landmark
+) {
 
+    const prompts =
+        CONFIG.customLandmarkPrompts ||
+        {};
+
+    const name =
+        getLandmarkName(
+            landmark
+        );
+
+    const normalizedName =
+        String(name || "")
+            .trim()
+            .toLowerCase();
+
+    for (
+        const [
+            key,
+            value,
+        ] of Object.entries(
+            prompts
+        )
+    ) {
+
+        const normalizedKey =
+            String(key || "")
+                .trim()
+                .toLowerCase();
+
+        if (
+            normalizedKey ===
+            normalizedName
+        ) {
+
+            return value;
+        }
+    }
+
+    return null;
+}
             function getLandmarkPhoto(
                 feature
             ) {
@@ -1183,8 +1321,7 @@ $arcgis
             /* =================================================================
              * DISTANCE
              * ================================================================= */
-
-            function getDistanceMeters(
+                        function getDistanceMeters(
                 targetGeometry,
                 guessPoint
             ) {
@@ -1193,12 +1330,137 @@ $arcgis
                     !targetGeometry ||
                     !guessPoint
                 ) {
-                    return 0;
+
+                    return Number.POSITIVE_INFINITY;
                 }
 
                 try {
 
-                    const distance =
+                    /*
+                     * Ja pareizā vieta ir polygon un klikšķis ir polygon iekšā,
+                     * distance ir 0 m.
+                     */
+
+                    if (
+                        targetGeometry.type ===
+                            "polygon"
+                    ) {
+
+                        const inside =
+                            geometryEngine.contains(
+                                targetGeometry,
+                                guessPoint
+                            );
+
+                        if (
+                            inside
+                        ) {
+
+                            return 0;
+                        }
+                    }
+
+                    /*
+                     * Ja pareizā vieta ir extent un klikšķis ir extent iekšā,
+                     * distance ir 0 m.
+                     */
+
+                    if (
+                        targetGeometry.type ===
+                            "extent"
+                    ) {
+
+                        const inside =
+                            targetGeometry.contains(
+                                guessPoint
+                            );
+
+                        if (
+                            inside
+                        ) {
+
+                            return 0;
+                        }
+                    }
+
+                    /*
+                     * Vispirms mēģinām geodēzisko attālumu metros.
+                     * Tas ir drošāk kartēm ar WebMercator/WGS84 koordinātām.
+                     */
+
+                    if (
+                        geometryEngine.geodesicDistance
+                    ) {
+
+                        const geodesicDistance =
+                            geometryEngine.geodesicDistance(
+                                targetGeometry,
+                                guessPoint,
+                                "meters"
+                            );
+
+                        if (
+                            typeof geodesicDistance ===
+                                "number" &&
+                            Number.isFinite(
+                                geodesicDistance
+                            ) &&
+                            !Number.isNaN(
+                                geodesicDistance
+                            )
+                        ) {
+
+                            return Math.max(
+                                0,
+                                geodesicDistance
+                            );
+                        }
+                    }
+
+                    /*
+                     * Ja geodēziskais variants neder,
+                     * mēģinām parasto geometryEngine.distance.
+                     */
+
+                    const planarDistance =
+                        geometryEngine.distance(
+                            targetGeometry,
+                            guessPoint,
+                            "meters"
+                        );
+
+                    if (
+                        typeof planarDistance ===
+                            "number" &&
+                        Number.isFinite(
+                            planarDistance
+                        ) &&
+                        !Number.isNaN(
+                            planarDistance
+                        )
+                    ) {
+
+                        return Math.max(
+                            0,
+                            planarDistance
+                        );
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "geometryEngine distance failed, trying distanceOperator:",
+                        error
+                    );
+                }
+
+                /*
+                 * Rezerves variants.
+                 */
+
+                try {
+
+                    const operatorDistance =
                         distanceOperator.execute(
                             targetGeometry,
                             guessPoint,
@@ -1209,14 +1471,19 @@ $arcgis
                         );
 
                     if (
-                        typeof distance === "number" &&
+                        typeof operatorDistance ===
+                            "number" &&
+                        Number.isFinite(
+                            operatorDistance
+                        ) &&
                         !Number.isNaN(
-                            distance
+                            operatorDistance
                         )
                     ) {
+
                         return Math.max(
                             0,
-                            distance
+                            operatorDistance
                         );
                     }
 
@@ -1228,10 +1495,18 @@ $arcgis
                     );
                 }
 
-                return 0;
+                /*
+                 * SVARĪGI:
+                 * Ja distance neizdodas, neatgriežam 0,
+                 * jo 0 nozīmē pilnus 10 punktus.
+                 *
+                 * Atgriežam Infinity, lai rezultāts kļūst par minScore.
+                 */
+
+                return Number.POSITIVE_INFINITY;
             }
 
-            function isDirectHit(
+                                function isDirectHit(
                 targetGeometry,
                 guessPoint
             ) {
@@ -1240,7 +1515,51 @@ $arcgis
                     !targetGeometry ||
                     !guessPoint
                 ) {
+
                     return false;
+                }
+
+                try {
+
+                    /*
+                     * Ja klikšķis ir polygon iekšā,
+                     * tas ir tiešs trāpījums.
+                     */
+
+                    if (
+                        targetGeometry.type ===
+                            "polygon" &&
+                        geometryEngine.contains(
+                            targetGeometry,
+                            guessPoint
+                        )
+                    ) {
+
+                        return true;
+                    }
+
+                    /*
+                     * Ja klikšķis ir extent iekšā,
+                     * tas ir tiešs trāpījums.
+                     */
+
+                    if (
+                        targetGeometry.type ===
+                            "extent" &&
+                        targetGeometry.contains(
+                            guessPoint
+                        )
+                    ) {
+
+                        return true;
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "Hit test failed:",
+                        error
+                    );
                 }
 
                 const scoring =
@@ -1255,12 +1574,20 @@ $arcgis
                         guessPoint
                     );
 
+                if (
+                    !Number.isFinite(
+                        distance
+                    )
+                ) {
+
+                    return false;
+                }
+
                 return (
                     distance <=
                     scoring.bucketMeters
                 );
             }
-
             /* =================================================================
              * RESULT SYMBOL
              * ================================================================= */
@@ -1430,6 +1757,22 @@ $arcgis
                     query.returnGeometry =
                         true;
 
+                    /*
+                     * Svarīgi:
+                     * prasām slāņa ģeometrijas tajā pašā projekcijā,
+                     * kurā ir kartes skats.
+                     */
+
+                    if (
+                        mapEl &&
+                        mapEl.view &&
+                        mapEl.view.spatialReference
+                    ) {
+
+                        query.outSpatialReference =
+                            mapEl.view.spatialReference;
+                    }
+
                     return landmarksLayer
                         .queryFeatures(
                             query
@@ -1456,10 +1799,9 @@ $arcgis
                                     (feature) => {
 
                                         const photoUrl =
-                                            feature
-                                                .attributes[
-                                                    photoField
-                                                ];
+                                            feature.attributes[
+                                                photoField
+                                            ];
 
                                         feature.attributes.imageUrl =
                                             photoUrl
@@ -1484,15 +1826,24 @@ $arcgis
                                 if (
                                     landmarkPool[0]
                                 ) {
+
+                                    console.log(
+                                        "First feature geometry:",
+                                        landmarkPool[0]
+                                            .geometry
+                                    );
+
                                     console.log(
                                         "First feature attributes:",
-                                        landmarkPool[0].attributes
+                                        landmarkPool[0]
+                                            .attributes
                                     );
                                 }
 
                                 if (
                                     !landmarkPool.length
                                 ) {
+
                                     alert(
                                         "Netika atrasta neviena vieta."
                                     );
@@ -1609,22 +1960,46 @@ $arcgis
                         currentLandmarkIndex
                     ];
 
-                const name =
-                    getLandmarkName(
-                        landmark
-                    );
+            const name = getLandmarkName( landmark );
 
-                const imageUrl =
-                    getLandmarkPhoto(
-                        landmark
-                    );
+const nameLooksLikePrompt =
+    String( name || "" )
+        .trim()
+        .toLowerCase()
+        .startsWith( "kur atrodas" );
 
-                if (
-                    $("landmark-name")
-                ) {
-                    $("landmark-name").innerText =
-                        name;
-                }
+const customPrompt =
+    getCustomLandmarkPrompt( landmark ) ||
+    (
+        nameLooksLikePrompt
+            ? name
+            : null
+    );
+
+currentRoundHasCustomPrompt =
+    Boolean(
+        customPrompt
+    );
+
+console.log(
+    "DEBUG custom prompt:",
+    {
+        name: name,
+        nameLooksLikePrompt: nameLooksLikePrompt,
+        customPrompt: customPrompt,
+        currentRoundHasCustomPrompt: currentRoundHasCustomPrompt,
+    }
+);
+
+const imageUrl = getLandmarkPhoto( landmark );
+             
+updateFindLandmarkTextVisibility();
+
+if ( $("landmark-name") ) {
+    $("landmark-name").innerText =
+        customPrompt || name;
+}
+
 
                 if (
                     imageUrl &&
@@ -1713,13 +2088,21 @@ $arcgis
                     }
                 }
 
-                gameState =
-                    "PLAYING";
+               gameState = "PLAYING";
+clicksEnabled = true;
 
-                clicksEnabled =
-                    true;
+if ( $("landmark-name") ) {
+    $("landmark-name").innerText =
+        customPrompt || name;
+}
 
-                updateUI();
+updateFindLandmarkTextVisibility();
+updateUI();
+updateFindLandmarkTextVisibility();
+
+setTimeout(() => {
+    updateFindLandmarkTextVisibility();
+}, 0);
             }
 
             /* =================================================================
@@ -1896,11 +2279,474 @@ $arcgis
              * CONFIRM GUESS
              * ================================================================= */
 
-            function confirmGuess() {
+                       function getDistanceMeters(
+                targetGeometry,
+                guessPoint
+            ) {
+
+                if (
+                    !targetGeometry ||
+                    !guessPoint
+                ) {
+
+                    return Number.POSITIVE_INFINITY;
+                }
+
+                try {
+
+                    /*
+                     * Ja klikšķis ir poligonā, distance ir 0.
+                     */
+
+                    if (
+                        targetGeometry.type ===
+                            "polygon" &&
+                        geometryEngine.contains(
+                            targetGeometry,
+                            guessPoint
+                        )
+                    ) {
+
+                        return 0;
+                    }
+
+                    /*
+                     * Ja klikšķis ir extent iekšā, distance ir 0.
+                     */
+
+                    if (
+                        targetGeometry.type ===
+                            "extent" &&
+                        targetGeometry.contains(
+                            guessPoint
+                        )
+                    ) {
+
+                        return 0;
+                    }
+
+                    /*
+                     * Mēģinām geodēzisko distanci metros.
+                     */
+
+                    if (
+                        geometryEngine.geodesicDistance
+                    ) {
+
+                        const geodesicDistance =
+                            geometryEngine.geodesicDistance(
+                                targetGeometry,
+                                guessPoint,
+                                "meters"
+                            );
+
+                        if (
+                            typeof geodesicDistance ===
+                                "number" &&
+                            Number.isFinite(
+                                geodesicDistance
+                            ) &&
+                            !Number.isNaN(
+                                geodesicDistance
+                            )
+                        ) {
+
+                            return Math.max(
+                                0,
+                                geodesicDistance
+                            );
+                        }
+                    }
+
+                    /*
+                     * Ja geodēziskais variants neder, mēģinām parasto distanci.
+                     */
+
+                    const planarDistance =
+                        geometryEngine.distance(
+                            targetGeometry,
+                            guessPoint,
+                            "meters"
+                        );
+
+                    if (
+                        typeof planarDistance ===
+                            "number" &&
+                        Number.isFinite(
+                            planarDistance
+                        ) &&
+                        !Number.isNaN(
+                            planarDistance
+                        )
+                    ) {
+
+                        return Math.max(
+                            0,
+                            planarDistance
+                        );
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "geometryEngine distance failed, trying distanceOperator:",
+                        error
+                    );
+                }
+
+                /*
+                 * Rezerves variants.
+                 */
+
+                try {
+
+                    const operatorDistance =
+                        distanceOperator.execute(
+                            targetGeometry,
+                            guessPoint,
+                            {
+                                unit:
+                                    "meters",
+                            }
+                        );
+
+                    if (
+                        typeof operatorDistance ===
+                            "number" &&
+                        Number.isFinite(
+                            operatorDistance
+                        ) &&
+                        !Number.isNaN(
+                            operatorDistance
+                        )
+                    ) {
+
+                        return Math.max(
+                            0,
+                            operatorDistance
+                        );
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "Distance calculation failed:",
+                        error
+                    );
+                }
+
+                /*
+                 * Ja distanci nevar aprēķināt, NEATGRIEŽAM 0,
+                 * jo 0 dotu pilnus punktus.
+                 */
+
+                return Number.POSITIVE_INFINITY;
+            }
+
+            function isDirectHit(
+                targetGeometry,
+                guessPoint
+            ) {
+
+                if (
+                    !targetGeometry ||
+                    !guessPoint
+                ) {
+
+                    return false;
+                }
+
+                try {
+
+                    /*
+                     * 10 punkti tikai tad, ja klikšķis ir poligonā.
+                     */
+
+                    if (
+                        targetGeometry.type ===
+                            "polygon" &&
+                        geometryEngine.contains(
+                            targetGeometry,
+                            guessPoint
+                        )
+                    ) {
+
+                        return true;
+                    }
+
+                    if (
+                        targetGeometry.type ===
+                            "extent" &&
+                        targetGeometry.contains(
+                            guessPoint
+                        )
+                    ) {
+
+                        return true;
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "Hit test failed:",
+                        error
+                    );
+                }
+
+                /*
+                 * Svarīgi:
+                 * Vairs nedodam full points par 500 m robežu.
+                 * 10 punkti ir tikai poligonā.
+                 */
+
+                return false;
+            }
+                     function getResultSymbol(
+                geometry,
+                gotFullPoints
+            ) {
+
+                if (!geometry) {
+
+                    return correctPointSymbol;
+                }
+
+                if (
+                    geometry.type ===
+                        "polygon" ||
+                    geometry.type ===
+                        "extent"
+                ) {
+
+                    return gotFullPoints
+                        ? correctAreaSymbol
+                        : incorrectAreaSymbol;
+                }
+
+                return correctPointSymbol;
+            }
+                     function normalizeLandmarkName(
+                value
+            ) {
+
+                return String(
+                    value || ""
+                )
+                    .trim()
+                    .toLowerCase()
+                    .replace(
+                        /["“”]/g,
+                        "\""
+                    )
+                    .replace(
+                        /\s+/g,
+                        " "
+                    );
+            }
+
+function shouldUseFullScoreBuffer( landmark ) {
+    const excludedNames = CONFIG.noFullScoreBufferLandmarks || [];
+    const currentName = normalizeLandmarkName( getLandmarkName( landmark ) );
+
+    const isExcluded = excludedNames.some( (name) =>
+        normalizeLandmarkName( name ) === currentName
+    );
+
+    return !isExcluded;
+}
+
+            function getDistanceMeters(
+                targetGeometry,
+                guessPoint
+            ) {
+
+                if (
+                    !targetGeometry ||
+                    !guessPoint
+                ) {
+
+                    return Number.POSITIVE_INFINITY;
+                }
+
+                try {
+
+                    if (
+                        targetGeometry.type ===
+                            "polygon" &&
+                        geometryEngine.contains(
+                            targetGeometry,
+                            guessPoint
+                        )
+                    ) {
+
+                        return 0;
+                    }
+
+                    if (
+                        targetGeometry.type ===
+                            "extent" &&
+                        targetGeometry.contains(
+                            guessPoint
+                        )
+                    ) {
+
+                        return 0;
+                    }
+
+                    if (
+                        geometryEngine.geodesicDistance
+                    ) {
+
+                        const geodesicDistance =
+                            geometryEngine.geodesicDistance(
+                                targetGeometry,
+                                guessPoint,
+                                "meters"
+                            );
+
+                        if (
+                            typeof geodesicDistance ===
+                                "number" &&
+                            Number.isFinite(
+                                geodesicDistance
+                            ) &&
+                            !Number.isNaN(
+                                geodesicDistance
+                            )
+                        ) {
+
+                            return Math.max(
+                                0,
+                                geodesicDistance
+                            );
+                        }
+                    }
+
+                    const planarDistance =
+                        geometryEngine.distance(
+                            targetGeometry,
+                            guessPoint,
+                            "meters"
+                        );
+
+                    if (
+                        typeof planarDistance ===
+                            "number" &&
+                        Number.isFinite(
+                            planarDistance
+                        ) &&
+                        !Number.isNaN(
+                            planarDistance
+                        )
+                    ) {
+
+                        return Math.max(
+                            0,
+                            planarDistance
+                        );
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "geometryEngine distance failed, trying distanceOperator:",
+                        error
+                    );
+                }
+
+                try {
+
+                    const operatorDistance =
+                        distanceOperator.execute(
+                            targetGeometry,
+                            guessPoint,
+                            {
+                                unit:
+                                    "meters",
+                            }
+                        );
+
+                    if (
+                        typeof operatorDistance ===
+                            "number" &&
+                        Number.isFinite(
+                            operatorDistance
+                        ) &&
+                        !Number.isNaN(
+                            operatorDistance
+                        )
+                    ) {
+
+                        return Math.max(
+                            0,
+                            operatorDistance
+                        );
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "Distance calculation failed:",
+                        error
+                    );
+                }
+
+                return Number.POSITIVE_INFINITY;
+            }
+
+            function isInsideGeometry(
+                targetGeometry,
+                guessPoint
+            ) {
+
+                if (
+                    !targetGeometry ||
+                    !guessPoint
+                ) {
+
+                    return false;
+                }
+
+                try {
+
+                    if (
+                        targetGeometry.type ===
+                            "polygon" &&
+                        geometryEngine.contains(
+                            targetGeometry,
+                            guessPoint
+                        )
+                    ) {
+
+                        return true;
+                    }
+
+                    if (
+                        targetGeometry.type ===
+                            "extent" &&
+                        targetGeometry.contains(
+                            guessPoint
+                        )
+                    ) {
+
+                        return true;
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "Inside check failed:",
+                        error
+                    );
+                }
+
+                return false;
+            }function confirmGuess() {
 
                 if (
                     !clickedPoint
                 ) {
+
                     return;
                 }
 
@@ -1919,37 +2765,124 @@ $arcgis
 
                 const scoring =
                     CONFIG.scoring || {
-                        pointsForHit: 10,
-                        bucketMeters: 500,
-                        penaltyPerBucket: 1,
-                        minScore: 0,
+                        pointsForHit:
+                            10,
+
+                        bucketMeters:
+                            500,
+
+                        penaltyPerBucket:
+                            1,
+
+                        minScore:
+                            0,
                     };
 
-                const distanceInMeters =
+          const hasFullScoreBuffer = shouldUseFullScoreBuffer( targetLandmark );
+
+                const isInside =
+                    isInsideGeometry(
+                        targetGeometry,
+                        clickedPoint
+                    );
+
+                let distanceInMeters =
                     getDistanceMeters(
                         targetGeometry,
                         clickedPoint
                     );
 
-                const hit =
-                    isDirectHit(
-                        targetGeometry,
-                        clickedPoint
-                    );
+                if (
+                    typeof distanceInMeters !==
+                        "number" ||
+                    Number.isNaN(
+                        distanceInMeters
+                    ) ||
+                    distanceInMeters < 0
+                ) {
+
+                    distanceInMeters =
+                        Number.POSITIVE_INFINITY;
+                }
 
                 let roundScore;
 
-                if (hit) {
+                /*
+                 * Punktu loģika:
+                 *
+                 * 1. Ja klikšķis ir poligonā = 10 punkti visiem objektiem.
+                 *
+                 * 2. Mazajiem objektiem:
+                 *    līdz 500 m no poligona = 10 punkti.
+                 *
+                 * 3. Lielajiem objektiem:
+                 *    tiklīdz iziet ārpus poligona, sākas sods:
+                 *    1-500 m = 9 punkti.
+                 */
+
+                if (
+                    isInside
+                ) {
 
                     roundScore =
                         scoring.pointsForHit;
 
+                } else if (
+                    !Number.isFinite(
+                        distanceInMeters
+                    )
+                ) {
+
+                    roundScore =
+                        scoring.minScore;
+
+                } else if (
+                    hasFullScoreBuffer
+                ) {
+
+                    /*
+                     * Mazie objekti:
+                     * 0-500 m ārpus poligona = 10 punkti
+                     * 501-1000 m = 9 punkti
+                     * 1001-1500 m = 8 punkti
+                     */
+
+                    const bandsBeyondBuffer =
+                        Math.max(
+                            0,
+                            Math.ceil(
+                                (
+                                    distanceInMeters -
+                                    scoring.bucketMeters
+                                ) /
+                                    scoring.bucketMeters
+                            )
+                        );
+
+                    const penalty =
+                        bandsBeyondBuffer *
+                        scoring.penaltyPerBucket;
+
+                    roundScore =
+                        Math.max(
+                            scoring.minScore,
+                            scoring.pointsForHit -
+                                penalty
+                        );
+
                 } else {
 
+                    /*
+                     * Lielie objekti:
+                     * poligonā = 10 punkti
+                     * 1-500 m ārpus poligona = 9 punkti
+                     * 501-1000 m = 8 punkti
+                     */
+
                     const bands =
-                        Math.floor(
+                        Math.ceil(
                             distanceInMeters /
-                            scoring.bucketMeters
+                                scoring.bucketMeters
                         );
 
                     const penalty =
@@ -1960,7 +2893,7 @@ $arcgis
                         Math.max(
                             scoring.minScore,
                             scoring.pointsForHit -
-                            penalty
+                                penalty
                         );
                 }
 
@@ -1971,43 +2904,55 @@ $arcgis
                 let resultTitle;
                 let resultMessage;
 
-                if (
-                    gotFullPoints
-                ) {
+               if ( gotFullPoints ) {
+    resultTitle = t( "correctTitle" );
+    resultMessage = t( "correctMessage", {
+        roundScore: roundScore,
+    } );
+    accuracyTracker.push( 1 );
+}
+               else {
 
-                    resultTitle =
-                        t(
-                            "correctTitle"
-                        );
+                    /*
+                     * Ja tev ir randomT() funkcija un incorrectTitles masīvs,
+                     * vari lietot randomT().
+                     * Ja nav, šī daļa automātiski lietos parasto t().
+                     */
 
-                    resultMessage =
-                        t(
-                            "correctMessage",
-                            {
-                                roundScore:
-                                    roundScore,
-                            }
-                        );
+                    if (
+                        typeof randomT ===
+                            "function"
+                    ) {
 
-                    accuracyTracker.push(
-                        1
-                    );
+                        resultTitle =
+                            randomT(
+                                "incorrectTitles",
+                                "incorrectTitle"
+                            );
 
-                } else {
+                    } else {
 
-                    resultTitle =
-                        t(
-                            "incorrectTitle"
-                        );
+                        resultTitle =
+                            t(
+                                "incorrectTitle"
+                            );
+                    }
+
+                    const displayDistance =
+                        Number.isFinite(
+                            distanceInMeters
+                        )
+                            ? Math.round(
+                                  distanceInMeters
+                              )
+                            : "ļoti tālu";
 
                     resultMessage =
                         t(
                             "incorrectMessage",
                             {
                                 distance:
-                                    Math.round(
-                                        distanceInMeters
-                                    ),
+                                    displayDistance,
 
                                 roundScore:
                                     roundScore,
@@ -2026,10 +2971,14 @@ $arcgis
                     $("round-result-title")
                 ) {
 
-                    $("round-result-title").innerText =
+                    $(
+                        "round-result-title"
+                    ).innerText =
                         resultTitle;
 
-                    $("round-result-title").style.color =
+                    $(
+                        "round-result-title"
+                    ).style.color =
                         gotFullPoints
                             ? "#16a34a"
                             : "#dc2626";
@@ -2038,7 +2987,10 @@ $arcgis
                 if (
                     $("round-result-message")
                 ) {
-                    $("round-result-message").innerHTML =
+
+                    $(
+                        "round-result-message"
+                    ).innerHTML =
                         resultMessage;
                 }
 
@@ -2445,85 +3397,76 @@ $arcgis
              * LEADERBOARD / SURVEY123
              * ================================================================= */
 
-            function showSubmitModal() {
+ function showSubmitModal() {
 
-                if (
-                    !LEADERBOARD.enabled ||
-                    !LEADERBOARD.survey123Url ||
-                    !LEADERBOARD.submitScoreFieldId
-                ) {
-                    return;
-                }
+    if (
+        !LEADERBOARD.enabled ||
+        !LEADERBOARD.survey123Url
+    ) {
+        return;
+    }
 
-                const fieldId =
-                    LEADERBOARD.submitScoreFieldId;
+    const rawScoreField =
+        LEADERBOARD.submitScoreFieldId ||
+        LEADERBOARD.scoreField ||
+        "rezult_ts";
 
-                const params =
-                    new URLSearchParams();
+    const scoreField =
+        String(rawScoreField).replace(
+            /^field:/,
+            ""
+        );
 
-                /*
-                 * Šeit spēles rezultāts tiek automātiski padots
-                 * uz Survey123 lauku score.
-                 *
-                 * Config.js jābūt:
-                 * submitScoreFieldId: "field:score"
-                 */
-                params.set(
-                    fieldId,
-                    String(totalScore)
-                );
+    const safeScore =
+        Number.isFinite(Number(totalScore))
+            ? Number(totalScore)
+            : 0;
 
-                /*
-                 * Svarīgi:
-                 * Šeit NELIEKAM field:score iekš hide,
-                 * jo tu gribi redzēt rezultātu formā.
-                 */
-                params.set(
-                    "hide",
-                    "navbar,header,description,footer"
-                );
+    const separator =
+        LEADERBOARD.survey123Url.includes("?")
+            ? "&"
+            : "?";
 
-                const surveyLang =
-                    currentLang() &&
-                    currentLang().surveyLang;
+    /*
+     * Survey123 URL prefill:
+     * field:rezult_ts=123
+     */
+    const url =
+        `${LEADERBOARD.survey123Url}` +
+        `${separator}` +
+        `field:${scoreField}=${encodeURIComponent(String(safeScore))}` +
+        `&hide=navbar,header,description,footer`;
 
-                if (
-                    surveyLang
-                ) {
-                    params.set(
-                        "lang",
-                        surveyLang
-                    );
-                }
+    console.log(
+        "Total score:",
+        safeScore
+    );
 
-                const separator =
-                    LEADERBOARD.survey123Url.includes("?")
-                        ? "&"
-                        : "?";
+    console.log(
+        "Survey123 score field:",
+        scoreField
+    );
 
-                const url =
-                    `${LEADERBOARD.survey123Url}${separator}${params.toString()}`;
+    console.log(
+        "Survey123 submit URL:",
+        url
+    );
 
-                console.log(
-                    "Survey123 submit URL:",
-                    url
-                );
+    if (
+        $("survey-iframe")
+    ) {
+        $("survey-iframe").src =
+            url;
+    }
 
-                if (
-                    $("survey-iframe")
-                ) {
-                    $("survey-iframe").src =
-                        url;
-                }
-
-                if (
-                    panels.submitModal
-                ) {
-                    panels.submitModal.classList.remove(
-                        "hidden"
-                    );
-                }
-            }
+    if (
+        panels.submitModal
+    ) {
+        panels.submitModal.classList.remove(
+            "hidden"
+        );
+    }
+}
 
             function showLeaderboard() {
 
