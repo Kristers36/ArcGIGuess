@@ -23,7 +23,7 @@ window.ARCGIGUESS_CONFIG = {
     portalUrl: null,
 
     // Tava ArcGIS Web Map
-    webMapItemId: "c61a0c96c36a4397aa8542fce258a4b4",
+    webMapItemId: "3c98953dd6b5425bbf3ab1db5b1db82b",
 
     // Slāņa nosaukums Web Map
     landmarkLayerTitle: "Vietas",
@@ -42,7 +42,24 @@ window.ARCGIGUESS_CONFIG = {
 
     // Atļaut pabeigt spēli ātrāk
     allowFinishEarly: true,
+    customLandmarkPrompts: {
+    "Staburags":
+        "Kur atrodas šī klints?",
 
+    "Ķemeru Nacionālais parks":
+        "Kur atrodas šis nacionālais parks?",
+
+    "Rundāles pils":
+        "Kur atrodas šī pils?",
+
+    "Aglonas bazilika":
+        "Kur atrodas šī vieta?",
+},
+ noFullScoreBufferLandmarks: [
+    "Abavas senleja",
+    "Ķemeru Nacionālais parks",
+    "Ķemeru nacionālais parks",
+],
     /* -------------------------------------------------------------------------
      * 3. SCORING
      * ---------------------------------------------------------------------- */
@@ -86,8 +103,7 @@ window.ARCGIGUESS_CONFIG = {
                     "Atrodi vietu. Atceries vēsturi. Pārbaudi sevi! Mēs parādīsim vēsturiskas vietas nosaukumu un attēlu. Vai vari to atrast kartē?<br><br>{scoringSummary}",
 
                 scoringSummaryTemplate:
-                    "Atrodi vietu vai nokļūsti {bucket} m attālumā: <strong>+{points} punkti</strong><br><strong>-{penalty} punkts</strong> par katriem {bucket} m no pareizās vietas, līdz pat {min} punktiem.",
-
+    "<strong>Atrodi vietu un nopelni punktus!</strong><br>Atrodi norādītā objekta atrašanās vietu kartē.<br><strong>{points} punkti</strong> – ja vieta atrasta precīzi.<br>Par katriem {bucket} m no pareizās vietas tiek atņemts {penalty} punkts.",
                 startButton:
                     "Sākt spēli",
 
@@ -117,9 +133,13 @@ window.ARCGIGUESS_CONFIG = {
 
                 correctMessage:
                     "Ideāli! Tu nopelnīji <strong>+{roundScore} punktus</strong>.",
-
                 incorrectTitle:
-                    "Tik tuvu!",
+                    "Labs mēģinājums!",
+                   incorrectTitles: [
+                        "Labs mēģinājums!",
+                        "Gandrīz izdevās!",
+                        "Mēģini vēl precīzāk!",
+],
 
                 incorrectMessage:
                     "Tu biji <strong>{distance} m</strong> prom no pareizās vietas. Tu nopelnīji <strong>{roundScore} punktus</strong>. Šeit ir pareizā lokācija.",
@@ -139,7 +159,7 @@ window.ARCGIGUESS_CONFIG = {
                 /* GAME OVER */
 
                 gameOverTitle:
-                    "Spēle beidzās!",
+                    "Paldies par piedalīšanos!",
 
                 finalScoreText:
                     "Lūk, tavi rezultāti:",
@@ -241,28 +261,40 @@ window.ARCGIGUESS_CONFIG = {
      * 6. LEADERBOARD
      * ---------------------------------------------------------------------- */
 
-    leaderboard: {
-        enabled: true,
+ leaderboard: {
+    enabled: true,
 
-        survey123Url:
-            "https://survey123.arcgis.com/share/ca86560c30ff4566a52adfd45b829fd0?portalUrl=https://envirotech.maps.arcgis.com",
+    survey123Url:
+        "https://survey123.arcgis.com/share/ca86560c30ff4566a52adfd45b829fd0?portalUrl=https://envirotech.maps.arcgis.com",
 
-        submitScoreFieldId:
-            "field:score",
+    /*
+     * Survey123 jautājuma/lauka īstais nosaukums rezultātam.
+     * Spēles kods ģenerēs:
+     * field:rezult_ts=123
+     */
+    submitScoreFieldId:
+        "rezult_ts",
 
-        dataApiUrl:
-            "https://services1.arcgis.com/zu8dBGfmKCvrZHh2/arcgis/rest/services/survey123_c4317eb262934df4b2fe38cb42a3d1d1_results/FeatureServer/0/query",
+    /*
+     * Šim jābūt tās pašas Survey123 rezultātu tabulas /query URL,
+     * kurā tiek iesniegti dati.
+     *
+     * Ja rezultātu tabula pēc iesniegšanas nerāda jaunos ierakstus,
+     * šis URL, visticamāk, norāda uz nepareizu slāni.
+     */
+    dataApiUrl:
+        "https://services1.arcgis.com/zu8dBGfmKCvrZHh2/arcgis/rest/services/survey123_c4317eb262934df4b2fe38cb42a3d1d1_results/FeatureServer/0/query",
 
-        firstNameField:
-            "first_name",
+    firstNameField:
+        "v_rds",
 
-        lastNameField:
-            "last_name",
+    lastNameField:
+        "uzv_rds",
 
-        scoreField:
-            "score",
+    scoreField:
+        "rezult_ts",
 
-        topN:
-            10,
-    },
-};
+    topN:
+        10,
+},
+    };
