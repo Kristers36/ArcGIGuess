@@ -2765,7 +2765,7 @@ function shouldUseFullScoreBuffer( landmark ) {
     return "Pamēģini paskatīties plašākā apkārtnē!";
   }
 
-  return "Pamēģini citu Latvijas pusi!";
+  return "Nākamreiz izdosies!";
 }
          function confirmGuess() {
 
