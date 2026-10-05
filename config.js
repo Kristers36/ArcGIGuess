@@ -129,13 +129,14 @@ window.ARCGIGUESS_CONFIG = {
 
                 correctMessage:
                     "Ideāli! Tu nopelnīji <strong>+{roundScore} punktus</strong>.",
-                incorrectTitle:
-                    "Labs mēģinājums!",
-                   incorrectTitles: [
-                        "Labs mēģinājums!",
-                        "Gandrīz izdevās!",
-                        "Mēģini vēl precīzāk!",
-],
+                
+       distanceTitles: {
+  veryClose: "Ļoti tuvu!",
+  close: "Labs mēģinājums!",
+  medium: "Labs virziens!",
+  far: "Skaties plašāk!",
+  veryFar: "Nākreiz sanāks!"
+},
 
                 incorrectMessage:
                     "Tu biji <strong>{distance} m</strong> prom no pareizās vietas. Tu nopelnīji <strong>{roundScore} punktus</strong>. Šeit ir pareizā lokācija.",
